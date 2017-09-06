@@ -96,11 +96,11 @@ void Analyze::set_peaks_x(std::vector<unsigned short> wf[64][128]){
     //----------------------------------------------------------------------
     const Int_t nbins = wf[wave.subrun][wave.channel].size(); //number of elements in wf
     
-    cout << "\n\ti\txmin\txmax" << endl;
-    cout << "\t====\t====\t===" << endl;
+    if(DBG) cout << "\n\ti\txmin\txmax" << endl;
+    if(DBG) cout << "\t====\t====\t===" << endl;
     for (int i = 0; i < nfoundHD; i++){
         peak_locations.push_back(xpeaksHD[i]); // store x-positions
-        cout<<"\t"<<i<<"\t"<< xpeaksHD[i] << endl;
+        if(DBG) cout<<"\t"<<i<<"\t"<< xpeaksHD[i] << endl;
     }
     sort(peak_locations.begin(), peak_locations.end()); //sort peaks lowest to highest
     wave.peaks_x_1d = peak_locations;
@@ -210,18 +210,17 @@ void test(){
     for(int s = 0; s < wf_root[subrun][chan].size(); s++){
         gCh->SetPoint(gCh->GetN() , s , wf_root[subrun][chan].at(s) );
     }
-    c0->cd(1);
+    c0->cd(1); //draw waveform
     gCh->Draw("ALP");
     gCh1->Draw("*");
     sprintf(titleGraph,"Waveform (Subrun: %d, Channel %d)",subrun,chan);
     gCh->SetTitle(titleGraph);
     
-    c0->cd(2);
+    c0->cd(2); //histogram of peaks of subrun and channel
     TH1F *h2 = new TH1F("h2","high & low peak counts",6000,0,6000);
     sprintf(titleHist,"Peaks (Subrun: %d, Channel %d)",subrun,chan);
     h2->SetTitle(titleHist);
     for (int j; j<foo.wave.peaks_y_1d.size(); j++) {
-        cout << j << "\tfood: " << foo.get_peaks(subrun,chan,j) << endl;
         h2->Fill(foo.get_peaks(subrun,chan,j));
     }
     h2->Draw();
