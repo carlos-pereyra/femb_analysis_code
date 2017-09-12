@@ -51,30 +51,46 @@ class Analyze {
     
     struct waveform_struct{
         int subrun, channel, nPeaks;
-        std::vector<int> pos_peak_x;
-        std::vector<int> pos_peak_y;
-        std::vector<int> neg_peak_x;
-        std::vector<int> neg_peak_y;
+        Double_t pos_peak_rms, pos_peak_mean, neg_peak_rms, neg_peak_mean;
+        std::vector<Int_t> pos_peak_x;
+        std::vector<Double_t> pos_peak_y;
+        std::vector<Int_t> neg_peak_x;
+        std::vector<Double_t> neg_peak_y;
     };
     waveform_struct wave;
     std::vector<waveform_struct> vector_struct[64][128]; //storage of structures
-    void set_run_channel(int, int);
-    void set_peaks(int,int,std::vector<unsigned short> wf[64][128], TH1F *wfH);
-    void set_run_info();
     
-    int get_npeaks(int,int);
-    int get_pos_peak_x(int,int,int);
-    int get_pos_peak_y(int,int,int);
-    int get_neg_peak_x(int,int,int);
-    int get_neg_peak_y(int,int,int);
-    void get_run_info(int, int);
-};
+    //get - section ----
+    void set_run_channel(int, int);
+    void set_peaks(int,int,std::vector<unsigned short> wf[64][128], TH1F *wfH); // determine pos & neg peaks
+    
+    // set peak mean & rms values
+    void set_pos_peak_mean(TH1F *h);
+    void set_neg_peak_mean(TH1F *h);
+    void set_pos_peak_rms(TH1F *h);
+    void set_neg_peak_rms(TH1F *h);
+    
+    void set_run_info();
 
+    //get - section ----
+    Int_t get_npeaks(int,int); //full number of peaks (pos & neg)
+
+    // peak locations & amplitudes
+    Int_t get_pos_peak_x(int,int,int);
+    Int_t get_neg_peak_x(int,int,int);
+    Double_t get_pos_peak_y(int,int,int);
+    Double_t get_neg_peak_y(int,int,int);
+    
+    // set peak mean & rms values
+    Double_t get_pos_peak_mean(int,int);
+    Double_t get_neg_peak_mean(int,int);
+    Double_t get_pos_peak_rms(int,int);
+    Double_t get_neg_peak_rms(int,int);
+};
 void Analyze::set_run_channel(int run, int channel){//1. declare for which subrun and channel this information pertains to
     wave.subrun = run;
     wave.channel = channel;
 }
-
 void Analyze::set_peaks(int subrun, int channel, std::vector<unsigned short> wf[64][128], TH1F *wfH){//2. get peak locations
     //initialize high resolution peak search
     for (int j=0; j < wf[subrun][channel].size()-2; j++) wfH -> SetBinContent(j,wf_root[subrun][channel].at(j+1));
@@ -120,49 +136,70 @@ void Analyze::set_peaks(int subrun, int channel, std::vector<unsigned short> wf[
     wfH->GetXaxis()->SetRange(1,wf[subrun][channel].size());
     wave.nPeaks = wave.pos_peak_y.size();
 }
-void Analyze::set_run_info() { // fix this
-    //4
+void Analyze::set_pos_peak_mean(TH1F *h){
+    wave.pos_peak_mean = h->GetMean();
+}
+void Analyze::set_neg_peak_mean(TH1F *h){
+    wave.neg_peak_mean = h->GetMean();
+}
+void Analyze::set_pos_peak_rms(TH1F *h){
+    wave.pos_peak_rms = h->GetRMS();
+}
+void Analyze::set_neg_peak_rms(TH1F *h){
+    wave.neg_peak_rms = h->GetRMS();
+}
+void Analyze::set_run_info() {
     vector_struct[wave.subrun][wave.channel].push_back(wave);
 }
-int Analyze::get_npeaks(int subrun,int channel){
+
+Int_t Analyze::get_npeaks(int subrun,int channel){
     waveform_struct w = vector_struct[subrun][channel].at(0);
     return w.nPeaks;
 }
-int Analyze::get_pos_peak_x(int subrun,int channel,int element){
+Int_t Analyze::get_pos_peak_x(int subrun,int channel,int element){
     waveform_struct w = vector_struct[subrun][channel].at(0);
     return w.pos_peak_x.at(element);
 }
-int Analyze::get_pos_peak_y(int subrun,int channel,int element){
+Double_t Analyze::get_pos_peak_y(int subrun,int channel,int element){
     waveform_struct w = vector_struct[subrun][channel].at(0);
-    if(DBG) cout << "\tGetting positive peak: " << w.pos_peak_y.at(element) << "\t at bin: " << w.pos_peak_x.at(element) << endl;
+    //if(DBG) cout << "\tGetting positive peak: " << w.pos_peak_y.at(element) << "\t at bin: " << w.pos_peak_x.at(element) << endl;
     if (element < w.pos_peak_x.size()) return w.pos_peak_y.at(element);
     else {
         cout << "requested element is outside positive peak matrix size (Analyze::get_pos_peak_y)" << endl;
         return 0;
     }
 }
-int Analyze::get_neg_peak_x(int subrun,int channel,int element){
+Int_t Analyze::get_neg_peak_x(int subrun,int channel,int element){
     waveform_struct w = vector_struct[subrun][channel].at(0);
     return w.neg_peak_x.at(element);
 }
-int Analyze::get_neg_peak_y(int subrun,int channel,int element){
+Double_t Analyze::get_neg_peak_y(int subrun,int channel,int element){
     waveform_struct w = vector_struct[subrun][channel].at(0);
-    if(DBG) cout << "\tGetting negative peak: " << w.neg_peak_y.at(element) << "\t at bin: " << w.neg_peak_x.at(element) << endl;
+    //if(DBG) cout << "\tGetting negative peak: " << w.neg_peak_y.at(element) << "\t at bin: " << w.neg_peak_x.at(element) << endl;
     if (element < w.neg_peak_x.size()) return w.neg_peak_y.at(element);
     else {
         cout << "requested element is outside positive peak matrix size (Analyze::get_neg_peak_y)" << endl;
         return 0;
     }
 }
-void Analyze::get_run_info(int subrun, int channel) {
-    waveform_struct food = vector_struct[subrun][channel].at(0);
-    cout << "channel: " << food.channel << endl;
-    cout << "subrun: " << food.subrun << endl;
-    cout << "positive peak locations (x): " << food.pos_peak_x.size() << endl;
-    cout << "positive peak heights (y): " << food.pos_peak_y.size() << endl;
+Double_t Analyze::get_pos_peak_mean(int subrun,int channel){
+    waveform_struct w = vector_struct[subrun][channel].at(0);
+    return w.pos_peak_mean;
 }
-//
+Double_t Analyze::get_neg_peak_mean(int subrun,int channel){
+    waveform_struct w = vector_struct[subrun][channel].at(0);
+    return w.neg_peak_mean;
+}
+Double_t Analyze::get_pos_peak_rms(int subrun,int channel){
+    waveform_struct w = vector_struct[subrun][channel].at(0);
+    return w.pos_peak_rms;
+}
+Double_t Analyze::get_neg_peak_rms(int subrun,int channel){
+    waveform_struct w = vector_struct[subrun][channel].at(0);
+    return w.neg_peak_rms;
+}
 
+//
 
 void test(){
     TFile *inputFile = new TFile("gainMeasurement_femb_1-parseBinaryFile.root", "READ"); //read input root file
@@ -192,31 +229,42 @@ void test(){
     
     //find peak heights
     Analyze foo;
-    int subrunLow=2, subrunHigh=subrunIn, subrunPoint = 2;
-    int channelLow=127, channelHigh=chanIn, channelPoint = 127; //specific range of parameters *fix this -cp
+    int subrunLow=2, subrunHigh=subrunIn, subrunPoint = 5;
+    int channelLow=127, channelHigh=chanIn, channelPoint = 127;
+    TH1F *pp2 = new TH1F("pp2","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //positive peak
+    TH1F *np2 = new TH1F("np2","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //negative peak
+    
     TH1F *wfH = new TH1F("wfH","ADC Signal",wf_root[subrunPoint][channelPoint].size(),0,wf_root[subrunPoint][channelPoint].size());
     for (int s=subrunLow; s <(subrunHigh+1); s++) {
         for (int c=channelLow; c <(channelHigh+1); c++) {
             cout << "iterations [s++, c++] " << s << " , " << c << endl;
             foo.set_run_channel(s,c);
             foo.set_peaks(s, c, wf_root, wfH); // store x-positions
-            foo.set_run_info(); // set all attributes and save to vector
+            //for(int i = 0; i < 38; i++) pp2->SetBinContent(foo.get_pos_peak_x(subrunPoint,channelPoint,i),foo.get_pos_peak_y(subrunPoint,channelPoint,i));
+            //foo.set_pos_peak_mean(pp2);
+            //foo.set_pos_peak_rms(pp2);
+            //for(int i = 0; i < 39; i++) np2->SetBinContent(foo.get_pos_peak_x(subrunPoint,channelPoint,i)+1,foo.get_pos_peak_y(subrunPoint,channelPoint,i));
+            //foo.set_neg_peak_mean(np2);
+            //foo.set_neg_peak_rms(np2);
+            foo.set_run_info(); // set all attributes and save to vector - need this to access all information
         }
     }
-
+    
+    //cout << "pos peak mean: " << foo.get_pos_peak_mean(subrunPoint, channelPoint) << endl;
+    //cout << "pos peak rms: " << foo.get_pos_peak_rms(subrunPoint, channelPoint) << endl;
+    
     //show results
     TCanvas *c0 = new TCanvas("c0", "c0", 200, 10, 800, 600);
     TGraph *gCh = new TGraph();
     TGraph *gCh1 = new TGraph();
     char titleHist[40],titleGraph[40];
     
-    c0->Divide(1,2); //canvas divide into two windows
-    
+    c0->Divide(1,3); //canvas divide into two windows
     c0->cd(1);
     for(int s = 0; s < wf_root[subrunPoint][channelPoint].size(); s++){ //draw input waveform
         gCh->SetPoint(gCh->GetN() , s , wf_root[subrunPoint][channelPoint].at(s) );
     }
-    for (int j = 0; j < foo.get_npeaks(subrunPoint,channelPoint); j++) { //draw positive peaks
+    for (int j = 0; j < foo.get_npeaks(subrunPoint,channelPoint); j++) { //draw positive peaks & negative peaks
         gCh1->SetPoint(gCh1->GetN(), foo.get_pos_peak_x(subrunPoint,channelPoint,j), foo.get_pos_peak_y(subrunPoint,channelPoint,j) );
         gCh1->SetPoint(gCh1->GetN(), foo.get_neg_peak_x(subrunPoint,channelPoint,j), foo.get_neg_peak_y(subrunPoint,channelPoint,j) );
     }
@@ -231,10 +279,49 @@ void test(){
     for (int j = 0; j < foo.get_npeaks(subrunPoint,channelPoint); j++) {
         h2->Fill(foo.get_pos_peak_y(subrunPoint,channelPoint,j));
     }
+    
     h2->SetTitle(titleHist);
     h2->Draw();
-    c0->Update();
     
+    c0->cd(3); //histogram of peaks of subrun and channel
+    TH1F *h = new TH1F("h","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //histogram wf
+    TH1F *d = new TH1F("d","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //background - level
+    TH1F *pp = new TH1F("pp","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //background - level
+    TH1F *np = new TH1F("np","",wf_root[subrunPoint][channelPoint].size(),1,wf_root[subrunPoint][channelPoint].size()); //background - level
+
+    Double_t source[wf_root[subrunPoint][channelPoint].size()];
+    for(int i = 0; i < wf_root[subrunPoint][channelPoint].size(); i++) source[i] = wf_root[subrunPoint][channelPoint].at(i);
+    
+    //Double_t peak_source[foo.wave.pos_peak_y.size()];
+    for(int i = 0; i < foo.wave.pos_peak_y.size(); i++) source[i] = foo.get_pos_peak_y(subrunPoint,channelPoint,i);
+    
+    TSpectrum *s = new TSpectrum();
+    s->Background(source,wf_root[subrunPoint][channelPoint].size(),100,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder8,kFALSE,
+                  TSpectrum::kBackSmoothing15,kFALSE);
+    
+    //Draw the waveform
+    for(int i = 0; i < wf_root[subrunPoint][channelPoint].size(); i++) h->SetBinContent(i+1, wf_root[subrunPoint][channelPoint].at(i));
+
+    //Draw positive peaks (expecting 39 peaks)
+    for(int i = 0; i < 39; i++) pp->SetBinContent(foo.get_pos_peak_x(subrunPoint,channelPoint,i)+1,foo.get_pos_peak_y(subrunPoint,channelPoint,i));
+
+    //Draw negative peaks (expecting 39 peaks)
+    for(int i = 0; i < 39; i++) np->SetBinContent(foo.get_neg_peak_x(subrunPoint,channelPoint,i)+1,foo.get_neg_peak_y(subrunPoint,channelPoint,i));
+
+    //Draw the estimated background
+    for(int i = 0; i < wf_root[subrunPoint][channelPoint].size(); i++) d->SetBinContent(i+1, source[i]);
+
+    h->Draw();
+    //d->SetLineColor(kRed);
+    //d->Draw("SAME L");
+    pp->SetLineColor(kRed);
+    pp->SetTitle(titleHist);
+    pp->Draw("SAME L");
+    
+    np->SetLineColor(kRed);
+    np->Draw("SAME L");
+
+    c0->Update();
 }
 
 
