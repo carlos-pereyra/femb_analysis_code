@@ -3,7 +3,7 @@
 
 ### Peak.h
 
-contains analysis header (.h) and script (.cpp)
+contains analysis header (analyze.h) and script (test.cpp)
 
 #### Class Analyze
 
@@ -21,4 +21,7 @@ contains analysis header (.h) and script (.cpp)
 
 ##### set_neg_peak_rms
 
-\t food
+'''c++
+cout << "food" << endl;
+'''
+
