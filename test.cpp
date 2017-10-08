@@ -41,9 +41,9 @@ const int const_numChan = 128;
 
 //------------ Control ------------
 int subrunLow=2, subrunHigh=10, subrunPoint = 8; //controls peak finding limits (subrun and channel) - need baseline info (mean and rms) - found from subrun 1
-int channelLow=127, channelHigh=127, channelPoint = 127;
+int channelLow=125, channelHigh=127, channelPoint = 127;
 int subrunBaseline=1;
-const char file1[100] = "20170816T145947_fembTest_gainenc_test_g3_s2_extpulse.root";
+const char file1[100] = "20170816T145947_fembTest_gainenc_test_g3_s3_extpulse.root";
 const char path1[100] = "Root_Binary_Files/";
 
 Double_t baseline1;
@@ -82,7 +82,7 @@ class Analyze {
     
     struct waveform_struct{
         int subrun, channel, pos_npeaks, neg_npeaks, wf_elements;
-        Double_t pos_peak_rms, pos_peak_mean, neg_peak_rms, neg_peak_mean, rise_time; //peak stats
+        Double_t pos_peak_rms, pos_peak_mean, neg_peak_rms, neg_peak_mean, rise_time, width; //peak stats
         Double_t baseline;
         std::vector<Int_t> pos_peak_x;
         std::vector<Int_t> pos_peak_y;
@@ -130,6 +130,7 @@ class Analyze {
     
     // peak quality
     Int_t get_risetime(int,int,std::vector<unsigned short> wf[64][128]);
+    Int_t get_width(int,int,std::vector<unsigned short> wf[64][128]);
 };
 
 //----------------------------------------------------------------------------
@@ -142,17 +143,20 @@ void Analyze::set_run_channel(int run, int channel){//1. declare for which subru
 
 void Analyze::set_baseline(int subrun, int channel, std::vector<unsigned short> wf[64][128]){
     TString histName;
-    histName.Form("Baseline (Subrun: %d, Channel: %d)", subrun, channelPoint);
-    TH1F *base_hist = new TH1F(histName,"",5000,1,5000); //histogram subrun 1 baseline #1
+    histName.Form("Baseline Data (Subrun: %d, Channel: %d)", subrun, channelPoint); // rename!!! -cp
+    
+    TH1F *base_hist = new TH1F("","",5000,1,5000); //histogram subrun 1 baseline #1
+    
     for(int s = 0; s < wf[subrun][channel].size(); s++) base_hist->Fill(wf[subrun][channel].at(s));
+    
     Double_t baseline = base_hist->GetMean(); //Get Baseline Mean
-    base_hist->Draw();
     vector_struct[subrun][channel].at(0).baseline = baseline;
+    
 }
 
 void Analyze::set_peaks(int subrun, int channel, std::vector<unsigned short> wf[64][128], Int_t interval){//2. get peak locations
-    wave.wf_elements = wf[subrun][channel].size();
     TH1F *wfH = new TH1F("","ADC Signal",wf[subrun][channelPoint].size(),0,wf[subrun][channelPoint].size());
+    
     for(int s = 0; s < wf[subrunPoint][channelPoint].size(); s++) wfH->SetBinContent(s , wf[subrun][channel].at(s)); //draw input waveform
 
     int stop = (wf[subrun][channel].size()/interval);
@@ -322,62 +326,48 @@ Int_t Analyze::get_risetime(int subrun, int channel, std::vector<unsigned short>
     for (int i = 0; i < 10; i++) {
         y2 = (wf[subrun][channel].at(w.pos_peak_x.at(0)-i)-w.baseline);
         ratio = y2/y1;
-        if (ratio<0.05) break;
+        if (ratio<0.01) break;
         risetime = i+1;
         
         if(DBG) cout << "ratio: " << ratio << endl;
         if(DBG) cout <<"x1: "<< w.pos_peak_x.at(0) <<" y1: "<<y1<< " x2: " << risetime << " y2: " << y2 << endl;
     }
-    //if(DBG) cout << "subrun: " << subrun << " channel: " << channel << "\tgetting risetime: " << risetime << endl;
+    if(DBG) cout << "subrun: " << subrun << " channel: " << channel << "\tgetting risetime: " << risetime << endl;
     vector_struct[subrun][channel].at(0).rise_time = risetime;
     return risetime;
 }
 
-double response(double *x, double *par){
+Int_t Analyze::get_width(int subrun, int channel, std::vector<unsigned short> wf[64][128]){
+    waveform_struct w = vector_struct[subrun][channel].at(0);
+    float ratio;
+    Double_t y1 = (w.pos_peak_y.at(0)-w.baseline), y2;
+    Int_t width, L, R;
     
-    
-    double f = 4.31054*exp(-2.94809*x[0]/par[1])*par[0]-2.6202*exp(-2.82833*x[0]/par[1])*cos(1.19361*x[0]/par[1])*par[0]
-    -2.6202*exp(-2.82833*x[0]/par[1])*cos(1.19361*x[0]/par[1])*cos(2.38722*x[0]/par[1])*par[0]
-    +0.464924*exp(-2.40318*x[0]/par[1])*cos(2.5928*x[0]/par[1])*par[0]
-    +0.464924*exp(-2.40318*x[0]/par[1])*cos(2.5928*x[0]/par[1])*cos(5.18561*x[0]/par[1])*par[0]
-    +0.762456*exp(-2.82833*x[0]/par[1])*sin(1.19361*x[0]/par[1])*par[0]
-    -0.762456*exp(-2.82833*x[0]/par[1])*cos(2.38722*x[0]/par[1])*sin(1.19361*x[0]/par[1])*par[0]
-    +0.762456*exp(-2.82833*x[0]/par[1])*cos(1.19361*x[0]/par[1])*sin(2.38722*x[0]/par[1])*par[0]
-    -2.6202*exp(-2.82833*x[0]/par[1])*sin(1.19361*x[0]/par[1])*sin(2.38722*x[0]/par[1])*par[0]
-    -0.327684*exp(-2.40318*x[0]/par[1])*sin(2.5928*x[0]/par[1])*par[0] +
-    +0.327684*exp(-2.40318*x[0]/par[1])*cos(5.18561*x[0]/par[1])*sin(2.5928*x[0]/par[1])*par[0]
-    -0.327684*exp(-2.40318*x[0]/par[1])*cos(2.5928*x[0]/par[1])*sin(5.18561*x[0]/par[1])*par[0]
-    +0.464924*exp(-2.40318*x[0]/par[1])*sin(2.5928*x[0]/par[1])*sin(5.18561*x[0]/par[1])*par[0];
-    
-    if (x[0] >0&&x[0] < 10){
-        return f;
-    }else{
-        return 0;
+    for (int i = 0; i < 10; i++) {
+        y2 = (wf[subrun][channel].at(w.pos_peak_x.at(0)-i)-w.baseline);
+        ratio = y2/y1;
+        if (ratio<0.02) break;
+        L = i+1;
+        
+        if(DBG) cout << "L ratio: " << ratio << endl;
+        if(DBG) cout <<"x1: "<< w.pos_peak_x.at(0) <<" y1: "<<y1<< " x2: " << L << " y2: " << y2 << endl;
     }
-}
-
-double compact_response(double *xv, double *par){
     
-    double x= xv[0];
+    for (int i = 0; i < 10; i++) {
+        y2 = (wf[subrun][channel].at(w.pos_peak_x.at(0)+i)-w.baseline);
+        ratio = y2/y1;
+        if (ratio<0.02) break;
+        R = i+1;
+        
+        if(DBG) cout << "R ratio: " << ratio << endl;
+        if(DBG) cout <<"x1: "<< w.pos_peak_x.at(0) <<" y1: "<<y1<< " x2: " << R << " y2: " << y2 << endl;
+    }
     
-    if (x <=  0) return 0;
-    if (x >= 10) return 0;
+    width = L + R + 1;
     
-    x /= par[1];
-    
-    double phi_1 = x * 1.19361;
-    double phi_2 = x * 2.59280;
-    
-    double f = 4.31054 * TMath::Exp(-0.119760*x) -5.240400*TMath::Cos(phi_1) + 1.524912*TMath::Sin(phi_1);
-    
-    f *= TMath::Exp(-0.425150*x);
-    
-    f += 0.929848*TMath::Cos(phi_2) -0.655368*TMath::Sin(phi_2);
-    
-    f *= TMath::Exp(-2.40318*x) * par[0];
-    
-    return f;
-    
+    //if(DBG) cout << "subrun: " << subrun << " channel: " << channel << "\tgetting risetime: " << risetime << endl;
+    vector_struct[subrun][channel].at(0).width = width;
+    return width;
 }
 
 double fudge_sundae(double *xv, double *par){
@@ -468,7 +458,7 @@ void test(){
     //----------------------------------------------------------------------------------
     for (int s=subrunLow; s <(subrunHigh+1); s++) { // = maximum subrun
         for (int c=channelLow; c <(channelHigh+1); c++) { // = maximum channel
-            cout << "peak finding [subrun: " << s << " ,channel: " << c << "]" << endl;
+            if(DBG) cout << "peak finding [subrun: " << s << " ,channel: " << c << "]" << endl;
             foo.set_pos_peak_mean(s,c);
             foo.set_neg_peak_mean(s,c);
             foo.set_pos_peak_rms(s,c);
@@ -539,41 +529,50 @@ void test(){
     
     c1->Divide(3,3);
     for (int i = 0; i < 3; i++) {
+        
+        TString histName;
         int pad1 = i*3+1;
         int pad2 = i*3+2;
         int pad3 = i*3+3;
         int subrun = (i+1)*3;
         
-        //waveform & risetime
+        //waveform & risetime ------------------------------------------------------------
         c1->cd(pad1);
-        TString histName;
+        
         histName.Form("First Peak R. Fit (Subrun: %d, Channel: %d)", subrun, channelPoint);
         TH1F *h1 = new TH1F(histName,"",4000,1,4000); //histogram subrun 1 wf #1
-        for(int j = 0; j < 500; j++) h1->SetBinContent(j , (wf_root1[subrun][channelPoint].at(foo.get_pos_peak_x(subrun,channelPoint,1)-foo.get_risetime(subrun, channelPoint, wf_root1)+j)-foo.get_baseline(subrun,channelPoint))/(1) );
+        
+        for(int j=0; j<500; j++) h1->SetBinContent(j , (wf_root1[subrun][channelPoint].at(foo.get_pos_peak_x(subrun,channelPoint,1)-foo.get_risetime(subrun, channelPoint, wf_root1)+j)-foo.get_baseline(subrun,channelPoint))/(1) ); // somethings wrong here!!!
+        
         pretty_plot(h1, 1, histName, "time (no units)", "ADC", 0,0,0,25,2000);
         
         TF1 *f3 = new TF1("func3",fudge_sundae,0,500,2);
+        
         f3->SetParameters(140.*1.012,1.0); // 14.0mV/fC for now with 2.0 us shaping time
-        h1->Fit("func3","","",0,15); //fit range* muy importante
+        
+        h1->Fit("func3","","",0,foo.get_width(9,channelPoint, wf_root1)); //fit range* muy importante
 
         auto legend = new TLegend(0.5,0.7,0.85,0.9);
         legend->AddEntry(f3,"Histogram filled with random numbers");
         legend->Draw();
         
-        //baseline
+        //baseline ------------------------------------------------------------
         c1->cd(pad2);
+        
         histName.Form("Baseline (Subrun: %d, Channel: %d)", subrun, channelPoint);
         TH1F *h2 = new TH1F(histName,"",4096,1,4096); //histogram subrun 1 wf #1
+        
         for(int j = 0; j < 10000; j++) h2->Fill(wf_root1[subrun][channelPoint].at(j)); //draw input waveform
         
-        pretty_plot(h2, 1, histName, "ADC Bins", "Count",0,2240,0,2340,1000);
+        pretty_plot(h2, 1, histName, "ADC Bins", "Count",0,foo.get_baseline(subrun,channelPoint)-75,0,foo.get_baseline(subrun,channelPoint)+75,1000);
         
-        //show fitted function to one peak
+        //show fitted function to one peak ------------------------------------------------------------
         c1->cd(pad3);
+        
         histName.Form("Response (Subrun: %d, Channel: %d)", subrun, channelPoint);
         TH1F *h3 = new TH1F(histName,"",1000,0,1000); //histogram subrun 1 wf #1
-
-        for (Int_t i=0;i!=999;i++) h3->SetBinContent(i, f3->Eval((i+1)) );
+        
+        //for (Int_t i=0;i!=999;i++) h3->SetBinContent(i, f3->Eval((i+1)) );
 
         pretty_plot(h3, 1, histName, "time (?? unknown units)", "ADC",0,0,0,25,2000);
         
