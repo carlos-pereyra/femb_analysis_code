@@ -8,12 +8,12 @@ contains analysis header (analyze.h) and script (test.cpp)
 #### Class Analyze
 
 ##### set_run_channel
-'''c++
+```c++
 void Analyze::set_run_channel(int run, int channel){//1. declare for which subrun and channel this information pertains to
     wave.subrun = run;
     wave.channel = channel;
 }
-'''
+```
 ##### set_baseline
 
 ##### set_peaks
