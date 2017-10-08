@@ -1,12 +1,12 @@
 # femb_analysis_code
 
 
-#FEMB ADC Analysis Script Documentation
+# FEMB ADC Analysis Script Documentation
 
-##Peak.h
+## Peak.h
 
 contains Class Analyze
 
-###Analyze
+### Analyze
 
 \t
