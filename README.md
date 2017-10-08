@@ -1,12 +1,24 @@
-# femb_analysis_code
-
 
 # FEMB ADC Analysis Script Documentation
 
-## Peak.h
+### Peak.h
 
-contains Class Analyze
+contains analysis header (.h) and script (.cpp)
 
-### Analyze
+#### Class Analyze
 
-\t
+##### set_run_channel
+
+##### set_baseline
+
+##### set_peaks
+
+##### set_pos_peak_mean
+
+##### set_neg_peak_mean
+
+##### set_pos_peak_rms
+
+##### set_neg_peak_rms
+
+\t food
