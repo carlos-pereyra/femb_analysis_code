@@ -2,15 +2,12 @@
 const int DBG = 0;
 
 class Analyze {
-    //store waveform information
-    //class must be set in sequential order
-    //int pos_npeaks,neg_npeaks; //n number of positive peaks
     
     public:
     
     struct waveform_struct{
         int subrun, channel, pos_npeaks, neg_npeaks, wf_elements;
-        Double_t pos_peak_rms, pos_peak_mean, neg_peak_rms, neg_peak_mean, rise_time, width; //peak stats
+        Double_t pos_peak_mean, pos_peak_rms, neg_peak_mean, neg_peak_rms, rise_time, width; //peak stats
         Double_t baseline;
         std::vector<Int_t> pos_peak_x;
         std::vector<Int_t> pos_peak_y;
@@ -248,17 +245,17 @@ Double_t Analyze::get_neg_peak_rms(int subrun,int channel){
 Int_t Analyze::get_risetime(int subrun, int channel, std::vector<unsigned short> wf[64][128]){
     waveform_struct w = vector_struct[subrun][channel].at(0);
     float ratio;
-    Double_t y1 = (w.pos_peak_y.at(0)-w.baseline), y2;
+    Double_t y1 = (w.pos_peak_y.at(1)-w.baseline), y2;
     Int_t risetime;
     
     for (int i = 0; i < 10; i++) {
-        y2 = (wf[subrun][channel].at(w.pos_peak_x.at(0)-i)-w.baseline);
+        y2 = (wf[subrun][channel].at(w.pos_peak_x.at(1)-i)-w.baseline);
         ratio = y2/y1;
         if (ratio<0.01) break;
         risetime = i+1;
         
         if(DBG) cout << "ratio: " << ratio << endl;
-        if(DBG) cout <<"x1: "<< w.pos_peak_x.at(0) <<" y1: "<<y1<< " x2: " << risetime << " y2: " << y2 << endl;
+        if(DBG) cout <<"x1: "<< w.pos_peak_x.at(1) <<" y1: "<<y1<< " x2: " << risetime << " y2: " << y2 << endl;
     }
     if(DBG) cout << "subrun: " << subrun << " channel: " << channel << "\tgetting risetime: " << risetime << endl;
     vector_struct[subrun][channel].at(0).rise_time = risetime;

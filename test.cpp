@@ -43,7 +43,7 @@ const int const_numChan = 128;
 int subrunLow=2, subrunHigh=10, subrunPoint = 8; //controls peak finding limits (subrun and channel) - need baseline info (mean and rms) - found from subrun 1
 int channelLow=125, channelHigh=127, channelPoint = 127;
 int subrunBaseline=1;
-const char file1[100] = "20170816T145947_fembTest_gainenc_test_g3_s3_extpulse.root";
+const char file1[100] = "20170816T145947_fembTest_gainenc_test_g3_s0_extpulse.root";
 const char path1[100] = "Root_Binary_Files/";
 
 Double_t baseline1;
@@ -137,31 +137,24 @@ void test(){
             wf_root1[subrunIn1][chanIn1].push_back( wfIn1->at(s) );
         }
     }
-    cout << "max subrun1: " << subrunIn1 << " max channel2: " << chanIn1 << endl;
+    cout << "max subrun: " << subrunIn1 << " max channel: " << chanIn1 << endl;
     inputFile1->Close();
     
     //-------------------------------------
     //----   3. set peak information   ----
     //-------------------------------------
     Analyze foo;
-    for (int s=1; s <(subrunHigh+1); s++) { //+1 to reach max iterator
-        for (int c=channelLow; c <(channelHigh+1); c++) { //+1 to reach max iterator
+    for (int s=1; s <=subrunHigh; s++) { //+1 to reach max iterator
+        for (int c=channelLow; c <=channelHigh; c++) { //+1 to reach max iterator
             foo.set_run_info(s,c); // set all attributes and save to vector - need this to access all information
         }
     }
-    for (int s=subrunLow; s <(subrunHigh+1); s++) { //+1 to reach max iterator
-        for (int c=channelLow; c <(channelHigh+1); c++) { //+1 to reach max iterator
+    for (int s=subrunLow; s <=subrunHigh; s++) { //+1 to reach max iterator
+        for (int c=channelLow; c <=channelHigh; c++) { //+1 to reach max iterator
             foo.set_run_channel(s,c);
             foo.set_baseline(s,c,wf_root1);
             foo.set_peaks(s,c,wf_root1, 400); // store x-positions - 497 interval
-        }
-    }
-    //----------------------------------------------------------------------------------
-    //----  4. find peak statistics for variable subrun settings - single channel   ----
-    //----------------------------------------------------------------------------------
-    for (int s=subrunLow; s <(subrunHigh+1); s++) { // = maximum subrun
-        for (int c=channelLow; c <(channelHigh+1); c++) { // = maximum channel
-            if(DBG) cout << "peak finding [subrun: " << s << " ,channel: " << c << "]" << endl;
+            
             foo.set_pos_peak_mean(s,c);
             foo.set_neg_peak_mean(s,c);
             foo.set_pos_peak_rms(s,c);
@@ -207,7 +200,7 @@ void test(){
     // fit pos peak
     TF1 *g1 = new TF1("m1","pol1",subrunLow,10);
     Double_t par1[9];
-    pp->Fit("m1","pol1","N",subrunLow,10);
+    pp->Fit("m1","qpol1","N",subrunLow,10);
     g1->SetLineColorAlpha(kBlue,0.35);
     g1->SetLineStyle(2);
     g1->Draw("same");
@@ -217,7 +210,7 @@ void test(){
     // fit neg peak
     TF1 *g2 = new TF1("m2","pol1",subrunLow,10);
     Double_t par2[9];
-    np->Fit("m2","pol1","N",subrunLow,10);
+    np->Fit("m2","qpol1","N",subrunLow,10);
     g2->SetLineColorAlpha(kMagenta,0.35);
     g2->SetLineStyle(9);
     g2->Draw("same");
@@ -253,7 +246,7 @@ void test(){
         
         f3->SetParameters(140.*1.012,1.0); // 14.0mV/fC for now with 2.0 us shaping time
         
-        h1->Fit("func3","","",0,foo.get_width(9,channelPoint, wf_root1)); //fit range* muy importante
+        h1->Fit("func3","q","",0,foo.get_width(9,channelPoint, wf_root1)); //fit range* muy importante
 
         auto legend = new TLegend(0.5,0.7,0.85,0.9);
         legend->AddEntry(f3,"Histogram filled with random numbers");
@@ -273,9 +266,9 @@ void test(){
         c1->cd(pad3);
         
         histName.Form("Response (Subrun: %d, Channel: %d)", subrun, channelPoint);
-        TH1F *h3 = new TH1F(histName,"",1000,0,1000); //histogram subrun 1 wf #1
+        TH1F *h3 = new TH1F(histName,"q",1000,0,1000); //histogram subrun 1 wf #1
         
-        //for (Int_t i=0;i!=999;i++) h3->SetBinContent(i, f3->Eval((i+1)) );
+        for (Int_t i=0;i!=999;i++) h3->SetBinContent(i, f3->Eval((i+1)));
 
         pretty_plot(h3, 1, histName, "time (?? unknown units)", "ADC",0,0,0,25,2000);
         
@@ -283,6 +276,31 @@ void test(){
     
     c1->Modified();
     c1->Update();
+    
+    cout << "\n\tScript Parameters:" << endl;
+    cout << "  \t==================\n" << endl;
+    
+    cout << "\t\t Subrun Low: " << subrunLow << endl;
+    cout << "\t\t Subrun High: " << subrunHigh << endl;
+    cout << "\t\t Subrun Point: " << subrunPoint << "\n" << endl;
+    
+    cout << "\t\t Channel Low: " << channelLow << endl;
+    cout << "\t\t Channel High: " << channelHigh << endl;
+    cout << "\t\t Channel Point: " << channelPoint << "\n" << endl;
+    
+    cout << "\n\tAnalysis Summary:" << endl;
+    cout << "  \t================:\n" << endl;
+
+    cout << "\t\tSubrun\tChannel\tBaseline\tPos. Peaks\tPos. Peak MEAN\tPos. Peak RMS\tNeg. Peaks\tNeg. Peak MEAN\tNeg. Peak RMS\tPeak Risetime\tPeak Width" << endl;
+    cout << "\t\t======\t=======\t========\t==========\t==============\t=============\t==========\t==============\t=============\t=============\t==========" << endl;
+    for (int s = subrunLow; s <= subrunHigh; s++) {
+        for (int c = channelLow; c<= channelHigh; c++) {
+            cout << "\t\t" << s << "\t" << c << "\t" << foo.get_baseline(s,c) << "\t\t" << foo.get_pos_npeaks(s,c) << "\t\t" << foo.get_pos_peak_mean(s,c) << "\t\t" << foo.get_pos_peak_rms(s,c) << "\t\t"
+            << foo.get_neg_npeaks(s,c) << "\t\t" << foo.get_neg_peak_mean(s,c) << "\t\t" << foo.get_neg_peak_rms(s,c) << "\t\t" << foo.get_risetime(s,c,wf_root1) << endl;//<< "\t\t" << foo.get_width(s,c,wf_root1) << endl;
+        }
+    }
+
+    
     
     //-------------------------------------------------------------------------------------
     //----   6. ADC Signal Overlay with Located Peaks (Visual Peak Inspection)  ---- wf#1 -
