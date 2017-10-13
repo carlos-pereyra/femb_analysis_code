@@ -1,0 +1,8 @@
+0	//subrun minimum (subrun low)
+10	//subrun maximum (subrun high)
+
+12	//channel minimum (channel low)
+12	//channel maximum (channel high)
+
+7	//examine subrun (subrun point)
+12 	//examine channel (channel point)
