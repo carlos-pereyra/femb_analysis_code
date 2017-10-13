@@ -42,15 +42,17 @@ TFile *inputFile1;
 const int const_numSubrun = 64;
 const int const_numChan = 128;
 
-const char file1[100] = "20170816T145947_fembTest_gainenc_test_g3_s2_extpulse.root";
-const char path1[100] = "Root_Binary_Files/";
-
 std::vector<unsigned short> wf_root1[64][128]; //store waveforms
+std::vector<unsigned short> wf_root[64][128][2]; //store waveforms [subrun][channel][file]
 
 //----------------------------------------------------------------------------
 //----                                main                                ----
 //----------------------------------------------------------------------------
 void test(){
+    
+    //
+    // read parameters
+    //
     
     vector<double> par = getParameters();
     int subrunLow = par.at(0);
@@ -63,25 +65,27 @@ void test(){
     int channelPoint = par.at(5);
     
     vector<string> files = getFiles();
-    string file = files.at(0);
+    string file_1 = files.at(0); // get this to work!!!
     
     //
     // read root file
     //
-    char location1[200];
-    sprintf(location1,"%s%s",path1,file1);
-    TFile *inputFile1 = new TFile(location1, "READ");   //read input root file
+    
+    TFile *inputFile1 = new TFile(file_1.c_str(), "READ");  //read input root file
     tr_rawdata1 = (TTree*) inputFile1->Get("femb_wfdata");  //initialize tr_rawdata branches
     if( !tr_rawdata1 ){
         std::cout << "Error opening input file tree, exiting" << std::endl;
         gSystem->Exit(0);
     }
+    
     tr_rawdata1->SetBranchAddress("subrun", &subrunIn1);    // initialize subrun branch
     tr_rawdata1->SetBranchAddress("chan", &chanIn1);        // initialize channel branch
     tr_rawdata1->SetBranchAddress("wf", &wfIn1);            // initialize waveform branch
+    
     Long64_t nEntries1(tr_rawdata1->GetEntries());          //tr_rawdata branch-row length
     tr_rawdata1->GetEntry(0);                               // initialize tr_rawdata (pointer) to null
-    for(Long64_t entry(0); entry<nEntries1; ++entry) {      // loop over input waveforms, group waveforms by subrun
+    
+    for(Long64_t entry(0); entry < nEntries1; ++entry) {      // loop over input waveforms, group waveforms by subrun
         tr_rawdata1->GetEntry(entry);
         if( subrunIn1 < 0 || subrunIn1 >= const_numSubrun ) continue;
         if( chanIn1 < 0 || chanIn1 >= const_numChan ) continue;
