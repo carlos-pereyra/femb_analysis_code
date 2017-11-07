@@ -29,8 +29,10 @@ Double_t signalSizes_fpga[64] = {0.606,0.625,0.644,0.663,0.682,0.701,0.720,0.739
     0.853,0.872,0.891,0.909,0.928,0.947,0.966,0.985,1.004,1.023,1.042,1.061,1.080,1.099,1.118,1.137,
     1.156,1.175,1.194,1.213,1.232,1.251,1.269,1.288,1.307,1.326,1.345,1.364,1.383,1.402,1.421,1.440,
     1.459,1.478, 1.497,1.516,1.535,1.554,1.573,1.592,1.611,1.629,1.648,1.667,1.686,1.705,1.724,1.743,
-    1.762,1.781,1.800};
+    1.762,1.781,1.800}; //V
 
+Int_t gain;
+Int_t shape;
 
 void Ntuple_dat(const char* param_file ,const char* input_file){
     
@@ -83,6 +85,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     int f_l = 0;
     int f_h = file_vector.size();
     int f_p = par.at(10);
+    Int_t temp = par.at(11);
 
     //
     // read root file
@@ -158,8 +161,39 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     Int_t charge = 0;
     Int_t file = f_p;
     Double_t bl_rms = 0;
-    
-    TFile f(Form("Results/%s/Tree_%s_F%d.root",time_stamp.c_str(),time_stamp.c_str(),f_p),"recreate");
+    if (f_p==0){
+        gain = 2;
+        shape = 0;
+    }
+    if (f_p==1){
+        gain = 2;
+        shape = 1;
+    }
+    if (f_p==2){
+        gain = 2;
+        shape = 2;
+    }
+    if (f_p==3){
+        gain = 2;
+        shape = 3;
+    }
+    if (f_p==4){
+        gain = 3;
+        shape = 0;
+    }
+    if (f_p==5){
+        gain = 3;
+        shape = 1;
+    }
+    if (f_p==6){
+        gain = 3;
+        shape = 2;
+    }
+    if (f_p==7){
+        gain = 3;
+        shape = 3;
+    }
+    TFile f(Form("Results/%s/Tree_%s_g%d_s%d.root",time_stamp.c_str(),time_stamp.c_str(),gain, shape),"recreate");
     TTree roast_beef("roast_beef","a big tree with stuff");
     roast_beef.Branch("RT_f",&RT_f,"RT_f/D");
     roast_beef.Branch("RT_k",&RT_k,"RT_k/D");
@@ -171,19 +205,20 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("s",&s,"s/I");
     roast_beef.Branch("c",&c,"c/I");
     roast_beef.Branch("p",&p,"p/I");
-    roast_beef.Branch("bl",&bl,"bl/I");
+    roast_beef.Branch("p",&p,"p/I");
+    roast_beef.Branch("gain",&gain,"gain/I");
+    roast_beef.Branch("shape",&shape,"shape/I");
+    roast_beef.Branch("temp",&temp,"temp/I");
     roast_beef.Branch("bl_rms",&bl_rms,"bl_rms/D");
-    //roast_beef.Branch("wfOut",&wfOut);
     for (c = c_l; c <= c_h; c++) {
         for (s = s_l; s <= s_h; s++) {
-            //wfOut.clear();
             TH1F *hist_peak = new TH1F("","",4000,1,4000);
             for (p = p_l; p < foo.get_pos_npeaks(s,c,f_p); p++) {
                 RT_k = pulse_shape.at(f_p);
-                RT_f = pulse_shape.at(f_p)-1;
+                RT_f = 100; //make initial guess bigger than RT_f_new
                 bl = foo.get_baseline(s,c,f_p);
                 bl_rms = foo.get_baseline_rms(s,c,f_p);
-                charge = ((signalSizes_fpga[s]-signalSizes_fpga[0])*184*10000/1.6);
+                charge = ((signalSizes_fpga[s-1]-signalSizes_fpga[0])*184*10000/1.6);
                 Int_t idx = 0;
                 while (std::abs(RT_f-RT_k)>0.4) {
                     x = foo.get_pos_peak_x(s,c,f_p,p);
@@ -209,15 +244,10 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                     GN_f = std::abs(resp->GetParameter(0)/10);
                     
                     idx++;
-                    if (idx>12) break;
+                    if (idx>30) break;
                 }
-                //for (int idx = 0; idx < wf[s][c][f_p].size(); idx++) wfOut.push_back(wf[s][c][f_p].at(idx));
                 GN_m = foo.get_pos_peak_y(s,c,f_p,p);
                 GN_r = GN_f/GN_m;
-                //cout << " b_rms: " << b_rms << " RT_f: " << RT_f;
-                //cout << " RT: " << RT_k << " GN_f: " << GN_f << " GN_m: " << GN_m;
-                //cout << "\t| s: " << s << " c: " << c << " p: " << p;
-                //cout << " f: " << f_p << endl;
                 roast_beef.Fill();
             }
             Int_t l_s = 1;
