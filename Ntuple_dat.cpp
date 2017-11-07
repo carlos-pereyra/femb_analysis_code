@@ -150,7 +150,6 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     Double_t RT_k = 0; //k = known
     Double_t GN_f = 0;
     Double_t GN_m = 0; //m = measured
-    Double_t GN_r = 0; //r = ratio
     Double_t fit_range = 0;
     Int_t s = 0;
     Int_t c = 0;
@@ -199,7 +198,6 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("RT_k",&RT_k,"RT_k/D");
     roast_beef.Branch("GN_f",&GN_f,"GN_f/D");
     roast_beef.Branch("GN_m",&GN_m,"GN_m/D");
-    roast_beef.Branch("GN_r",&GN_r,"GN_r/D");
     roast_beef.Branch("charge",&charge,"charge/I");
     roast_beef.Branch("file",&file,"file/I");
     roast_beef.Branch("s",&s,"s/I");
@@ -247,7 +245,6 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                     if (idx>30) break;
                 }
                 GN_m = foo.get_pos_peak_y(s,c,f_p,p);
-                GN_r = GN_f/GN_m;
                 roast_beef.Fill();
             }
             Int_t l_s = 1;
