@@ -1,8 +1,10 @@
-#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
 #include <algorithm>
+#include <functional>
+#include <array>
+#include <iostream>
 #include <iterator>
 #include <vector>
 #include <string>
@@ -23,7 +25,8 @@ std::vector<unsigned short> *wfIn;
 const int const_numSubrun = 64;
 const int const_numChan = 128;
 
-std::vector<unsigned short> wf[64][128][10]; //store waveforms [subrun][channel][file]
+//std::vector<unsigned short> wf[64][128][10]; //store waveforms [subrun][channel][file]
+std::vector<unsigned short> wf;
 
 Double_t signalSizes_fpga[64] = {0.606,0.625,0.644,0.663,0.682,0.701,0.720,0.739,0.758,0.777,0.796,0.815,0.834,
     0.853,0.872,0.891,0.909,0.928,0.947,0.966,0.985,1.004,1.023,1.042,1.061,1.080,1.099,1.118,1.137,
@@ -31,37 +34,8 @@ Double_t signalSizes_fpga[64] = {0.606,0.625,0.644,0.663,0.682,0.701,0.720,0.739
     1.459,1.478, 1.497,1.516,1.535,1.554,1.573,1.592,1.611,1.629,1.648,1.667,1.686,1.705,1.724,1.743,
     1.762,1.781,1.800}; //V
 
-Int_t gain;
-Int_t shape;
-
-void Ntuple_dat(const char* param_file ,const char* input_file){
-    
+void Ntuple_dat2(const char* param_file ,const char* input_file){
     Analyze foo;
-
-    // hardset color
-    vector<Int_t> color;
-    color.push_back(1); //kBlack 1
-    color.push_back(432); //kCyan 2
-    color.push_back(800); //kBlue 3
-    color.push_back(612); //kMagenta 4
-    color.push_back(840); //kTeal 5
-    color.push_back(632); //kRed 6
-    color.push_back(800); //kOrange 7
-    color.push_back(416); //kSpring 8
-    color.push_back(920); //Grey 9
-    color.push_back(880); //Violet 10
-    
-    // hard set - expected shaping time
-    vector<Double_t> pulse_shape; //[gain][shape]
-    pulse_shape.push_back(1); // g2 s0 ( s = 1, F = 0 )
-    pulse_shape.push_back(2); // g2 s1 ( s = 2, F = 1  )
-    pulse_shape.push_back(4); // g2 s2 ( s = 4, F = 2  )
-    pulse_shape.push_back(6); // g2 s3 ( s = 6, F = 3  )
-    pulse_shape.push_back(1); // g2 s0 ( s = 1, F = 4  )
-    pulse_shape.push_back(2); // g2 s1 ( s = 2, F = 5  )
-    pulse_shape.push_back(4); // g2 s2 ( s = 4, F = 6  )
-    pulse_shape.push_back(6); // g2 s3 ( s = 6, F = 7  )
-    
     //
     // read parameters
     //
@@ -85,173 +59,111 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     int f_l = 0;
     int f_h = file_vector.size();
     int f_p = par.at(10);
+    Int_t file = f_p;
     Int_t temp = par.at(11);
-
+    
+    // hard set - expected shaping time
+    vector<Double_t> pulse_shape; //[gain][shape]
+    pulse_shape.push_back(1); // g2 s0 ( s = 1, F = 0  )
+    pulse_shape.push_back(2); // g2 s1 ( s = 2, F = 1  )
+    pulse_shape.push_back(4); // g2 s2 ( s = 4, F = 2  )
+    pulse_shape.push_back(6); // g2 s3 ( s = 6, F = 3  )
+    pulse_shape.push_back(1); // g2 s0 ( s = 1, F = 4  )
+    pulse_shape.push_back(2); // g2 s1 ( s = 2, F = 5  )
+    pulse_shape.push_back(4); // g2 s2 ( s = 4, F = 6  )
+    pulse_shape.push_back(6); // g2 s3 ( s = 6, F = 7  )
+    Int_t gain, shape;
+    if (f_p==0){ gain = 2; shape = 0; }
+    if (f_p==1){ gain = 2; shape = 1; }
+    if (f_p==2){ gain = 2; shape = 2; }
+    if (f_p==3){ gain = 2; shape = 3; }
+    if (f_p==4){ gain = 3; shape = 0; }
+    if (f_p==5){ gain = 3; shape = 1; }
+    if (f_p==6){ gain = 3; shape = 2; }
+    if (f_p==7){ gain = 3; shape = 3; }
+    Double_t RT_f_fited = 0, RT_f = 0, RT_f_temp = 0, RT_k = pulse_shape.at(f_p);
+    Double_t GN_f_fited = 0, GN_f = 0, GN_f_temp = 0, GN_m = 0;
+    Int_t s = 0, c = 0, p = 0, x = 0, y = 0, x_s = 0, bl = 0, charge = 0, bl_rms = 0;
     //
     // read root file
-    //
     TTree *tr_rawdata;
-    //TFile *inputFile;
     string file_name = file_vector.at(f_p); // F_P => Reads only one file
-    
     TFile *inputFile = new TFile(file_name.c_str(), "READ");
     tr_rawdata = (TTree*) inputFile->Get("femb_wfdata");
     if( !tr_rawdata ){
         std::cout << "Error opening input file tree, exiting" << std::endl;
         gSystem->Exit(0);
     }
-    
     tr_rawdata->SetBranchAddress("subrun", &subrunIn);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("chan", &chanIn);        // initialize channel branch
     tr_rawdata->SetBranchAddress("wf", &wfIn);            // initialize waveform branch
-    
-    Long64_t nEntries(tr_rawdata->GetEntries());          // 11 subrun * 128 channels = 1408
+    Long64_t nEntries(tr_rawdata->GetEntries());          // 11 subrun * 128 channels = 1408 entries (wf)
     tr_rawdata->GetEntry(0);
     
+    //
+    // write root file
+    TFile f(Form("Results/%s/Tree_%s_g%d_s%d.root",time_stamp.c_str(),time_stamp.c_str(),gain, shape),"recreate");
+    TTree roast_beef("roast_beef","a big tree with stuff");
+    roast_beef.Branch("RT_f",&RT_f,"RT_f/D");
+    roast_beef.Branch("GN_f",&GN_f,"GN_f/D");
+    roast_beef.Branch("GN_m",&GN_m,"GN_m/D");
+    roast_beef.Branch("charge",&charge,"charge/I");
+    roast_beef.Branch("s",&s,"s/I");
+    roast_beef.Branch("c",&c,"c/I");
+    roast_beef.Branch("p",&p,"p/I");
+    //roast_beef.Branch("temp",&temp,"temp/I");       //x
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
         if( subrunIn < 0 || subrunIn >= const_numSubrun ) continue;
         if( chanIn < 0 || chanIn >= const_numChan ) continue;
+        wf.clear();
         for( unsigned int s = 0 ; s < wfIn->size() ; s++ ){//store waveform vector in array for quick access
-            wf[subrunIn][chanIn][f_p].push_back( wfIn->at(s) );
+            wf.push_back( wfIn->at(s) );
         }
-    }
-    
-    inputFile->Close();
-    
-    //
-    // initialize peak information
-    //
-    
-    for (int s=s_l; s<=s_h; s++) { // subrun loop
-        for (int c=c_l; c<=c_h; c++) { // channel loop
-            foo.set_run_info(s,c,f_p);    // initialize vector of structures size
-            
-            foo.set_run_channel(s,c);   // initialize vector of structures size
-            foo.set_baseline(s,c,f_p,wf);
-            foo.set_baseline_rms(s,c,f_p,wf);
-            foo.set_peaks(s,c,f_p,wf, 400);
-            
-            foo.set_pos_peak_mean(s,c,f_p);
-            foo.set_neg_peak_mean(s,c,f_p);
-            foo.set_pos_peak_rms(s,c,f_p);
-            foo.set_neg_peak_rms(s,c,f_p);
-        }
-    }
-    
-    //
-    // fit to peaks
-    //
-    
-    auto legend = new TLegend(0.1,0.7,0.95,0.9);
-    TString legend_title;
-    
-    Double_t RT_f = 0; //f = fit
-    Double_t RT_k = 0; //k = known
-    Double_t GN_f = 0;
-    Double_t GN_m = 0; //m = measured
-    Double_t fit_range = 0;
-    Int_t s = 0;
-    Int_t c = 0;
-    Int_t p = 0;
-    Int_t x = 0;
-    Int_t x_s = 0;
-    Int_t bl = 0;
-    Int_t charge = 0;
-    Int_t file = f_p;
-    Double_t bl_rms = 0;
-    if (f_p==0){
-        gain = 2;
-        shape = 0;
-    }
-    if (f_p==1){
-        gain = 2;
-        shape = 1;
-    }
-    if (f_p==2){
-        gain = 2;
-        shape = 2;
-    }
-    if (f_p==3){
-        gain = 2;
-        shape = 3;
-    }
-    if (f_p==4){
-        gain = 3;
-        shape = 0;
-    }
-    if (f_p==5){
-        gain = 3;
-        shape = 1;
-    }
-    if (f_p==6){
-        gain = 3;
-        shape = 2;
-    }
-    if (f_p==7){
-        gain = 3;
-        shape = 3;
-    }
-    TFile f(Form("Results/%s/Tree_%s_g%d_s%d.root",time_stamp.c_str(),time_stamp.c_str(),gain, shape),"recreate");
-    TTree roast_beef("roast_beef","a big tree with stuff");
-    roast_beef.Branch("RT_f",&RT_f,"RT_f/D");
-    roast_beef.Branch("RT_k",&RT_k,"RT_k/D");
-    roast_beef.Branch("GN_f",&GN_f,"GN_f/D");
-    roast_beef.Branch("GN_m",&GN_m,"GN_m/D");
-    roast_beef.Branch("charge",&charge,"charge/I");
-    roast_beef.Branch("file",&file,"file/I");
-    roast_beef.Branch("s",&s,"s/I");
-    roast_beef.Branch("c",&c,"c/I");
-    roast_beef.Branch("p",&p,"p/I");
-    roast_beef.Branch("p",&p,"p/I");
-    roast_beef.Branch("gain",&gain,"gain/I");
-    roast_beef.Branch("shape",&shape,"shape/I");
-    roast_beef.Branch("temp",&temp,"temp/I");
-    roast_beef.Branch("bl_rms",&bl_rms,"bl_rms/D");
-    for (c = c_l; c <= c_h; c++) {
-        for (s = s_l; s <= s_h; s++) {
-            TH1F *hist_peak = new TH1F("","",4000,1,4000);
-            for (p = p_l; p < foo.get_pos_npeaks(s,c,f_p); p++) {
-                RT_k = pulse_shape.at(f_p);
-                RT_f = 100; //make initial guess bigger than RT_f_new
-                bl = foo.get_baseline(s,c,f_p);
-                bl_rms = foo.get_baseline_rms(s,c,f_p);
-                charge = ((signalSizes_fpga[s-1]-signalSizes_fpga[0])*184*10000/1.6);
-                Int_t idx = 0;
-                while (std::abs(RT_f-RT_k)>0.4) {
-                    x = foo.get_pos_peak_x(s,c,f_p,p);
+        foo.set_run_info(subrunIn,chanIn,f_p);    // initialize vector of structures size
+        foo.set_run_channel(subrunIn,chanIn);
+        foo.set_baseline(subrunIn,chanIn,f_p,wf);
+        foo.set_baseline_rms(subrunIn,chanIn,f_p,wf);
+        foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+        bl = foo.get_baseline(subrunIn,chanIn,f_p);
+        charge = ((signalSizes_fpga[s-1]-signalSizes_fpga[0])*184*10000/1.6); // assumes s>=2
+        TH1F *hist_peak = new TH1F("","",50,0,49);
+        if (subrunIn > 1) {
+            for (p = p_l; p < 20; p++) {
+                RT_f_fited = 0;
+                RT_f_temp = 0;
+                Int_t idx = 2;
+                x = foo.get_pos_peak_x(subrunIn,chanIn,f_p,p);
+                y = foo.get_pos_peak_y(subrunIn,chanIn,f_p,p);
+                while (idx < 7) {                 // fit process
                     x_s = idx;
-                    
-                    //if(x_s > x) x_s = 0;
-                    for(int j = 0; j < 100; j++) hist_peak->SetBinContent(j,(wf[s][c][f_p].at(x - x_s + j) - bl));
-                    
-                    // set fit range
-                    fit_range = 30;//pulse_width.at(f_p);
-                    
-                    // define response function
-                    TF1 *resp = new TF1("response",fudge_sundae,0,500,2);
-                    
-                    // set parameters
-                    resp->SetParameters(3000,x_s);
-                    
-                    // set fit
-                    hist_peak->Fit("response","oq","",0, fit_range);
-                    
-                    // set fit data
-                    RT_f = std::abs(resp->GetParameter(1));
-                    GN_f = std::abs(resp->GetParameter(0)/10);
-                    
+                    for(int el = 0; el < 70; el++) hist_peak->SetBinContent(el,(wf.at(x - x_s + el) - bl));
+                    Int_t fit_range = 30;                                           // set fit range
+                    TF1 *resp_fit = new TF1("response_fit",fudge_sundae,0,49,2);    // define response function
+                    resp_fit->SetParameters(2500,x_s);                              // set parameters
+                    hist_peak->Fit("response_fit","oq","",0, fit_range);            // set fit
+                    RT_f_fited = std::abs(resp_fit->GetParameter(1));               // set fit data
+                    GN_f_fited = std::abs(resp_fit->GetParameter(0)/10);
+                    if ( std::abs(RT_f_fited-RT_k)<std::abs(RT_f_temp-RT_k) ){
+                        RT_f_temp = RT_f_fited;
+                        GN_f_temp = GN_f_fited;
+                        //chi_fited = resp_fit->GetChisquare();
+                    }
                     idx++;
-                    if (idx>30) break;
                 }
-                GN_m = foo.get_pos_peak_y(s,c,f_p,p);
+                RT_f = RT_f_temp;
+                GN_f = GN_f_temp;
+                GN_m = y;
+                charge = 0; if(subrunIn>1) charge = ((signalSizes_fpga[subrunIn-1]-signalSizes_fpga[0])*184*10000/1.6); // assumes s>=2
+                s = subrunIn;
+                c = chanIn;
+                p = p;
                 roast_beef.Fill();
             }
-            Int_t l_s = 1;
-            Int_t l_t = 1;
         }
-        
+        cout << "subrun: " << subrunIn << " channel: " << chanIn << endl;
     }
+    inputFile->Close();
     roast_beef.Write();
 }
 
