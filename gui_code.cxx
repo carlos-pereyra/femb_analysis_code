@@ -95,11 +95,7 @@ void MyMainFrame::DoDraw(Int_t pos){
     //if(gain = 2) hprof->SetMaximum(20);
     //if(gain = 3) hprof->SetMaximum(30);
     tr_rawdata->Draw("(0.33*6241)*(GN_m/charge):charge>>hprof",Form("c==%d", pos),"*");
-    // draws function graphics in randomly chosen interval
-    //TF1 *f1 = new TF1("f1",myfunction, 0, 127, 2);
-    //f1->SetParameters(1,pos);// pos changes single variable
-    //f1->SetLineWidth(1);
-    //f1->Draw();
+    
     TCanvas *fCanvas = fEcanvas->GetCanvas();
     fCanvas->cd();
     fCanvas->Update();
