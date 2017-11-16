@@ -18,41 +18,65 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     // create a main frame
     fMain = new TGMainFrame(p,w,h);
     
-    // create canvas widget
-    fEcanvas = new TRootEmbeddedCanvas("Ecanvas", fMain,w,h);
-    fMain->AddFrame(fEcanvas, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
-    
     // create a horizontal frame widget with buttons
-    hframe = new TGHorizontalFrame(fMain, w, 40);
+    hf_main = new TGHorizontalFrame(fMain, w, h);
+    
+    vf_1 = new TGVerticalFrame(hf_main, 10, 10);
+    hf_1 = new TGHorizontalFrame(vf_1, 10, 10); //internal to left
+    vf_1->AddFrame(hf_1,new TGLayoutHints(kLHintsBottom | kLHintsExpandX,0,0,1,2));
+    l_frame = new TGCompositeFrame(vf_1, 10, 10, kSunkenFrame);
+    vf_1->AddFrame(l_frame, new TGLayoutHints(kLHintsTop | kLHintsExpandY | kLHintsExpandX,0,0,1,2));
+
+    vf_2 = new TGVerticalFrame(hf_main, 10, 10);
+    hf_2 = new TGHorizontalFrame(vf_2, 10, 10); //internal to right
+    vf_2->AddFrame(hf_2,new TGLayoutHints(kLHintsBottom | kLHintsExpandX,0,0,1,2));
+    r_frame = new TGCompositeFrame(vf_2, 10, 10, kSunkenFrame);
+    vf_2->AddFrame(r_frame, new TGLayoutHints(kLHintsTop | kLHintsExpandY | kLHintsExpandX,0,0,1,2));
+
+    hf_main->AddFrame(vf_1, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
+    hf_main->AddFrame(vf_2, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
+    
+    // left frame
+    //
+    canvas_femb = new TRootEmbeddedCanvas("canvas_femb", l_frame, w, 0.5*h);     // create canvas widget
+    l_frame->AddFrame(canvas_femb, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
     // draw button
-    //TGTextButton *draw = new TGTextButton(hframe,"&Draw");
-    //draw->Connect("Clicked()","MyMainFrame", this, "DoDraw()");
-    //hframe->AddFrame(draw, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4) );
+    TGTextButton *draw = new TGTextButton(hf_1, "&Draw Summary","DoDrawFEMB()");
+    //draw->Connect("Clicked()","MyMainFrame",this,"DoDrawFEMB()");
+    hf_1->AddFrame(draw, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    
+    // right frame
+    //
+    
+    // create canvas
+    canvas_gain = new TRootEmbeddedCanvas("canvas_gain", r_frame, w, 0.5*h);     // create canvas widget
+    r_frame->AddFrame(canvas_gain, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
     // text box
-    fTeh1 = new TGTextEntry(hframe, fTbh1 = new TGTextBuffer(10), HId1);
+    fTeh1 = new TGTextEntry(hf_2, fTbh1 = new TGTextBuffer(10), HId1);
     fTbh1->AddText(0, "0");
     fBly = new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 3, 0);
     fTeh1->Connect("TextChanged(char*)", "MyMainFrame", this, "DoText(char*)");
-    hframe->AddFrame(fTeh1, fBly);
+    hf_2->AddFrame(fTeh1, fBly);
     
     // slider control
-    TGHSlider *hslider = new TGHSlider(hframe,150,kSlider1 | kScaleDownRight,HSId1);
+    TGHSlider *hslider = new TGHSlider(hf_2,150,kSlider1 | kScaleDownRight,HSId1);
     hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoSlider(Int_t)");
-    hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDraw(Int_t)");
+    hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawGain(Int_t)");
     hslider->SetRange(0,127);
     hslider->SetPosition(0);
-    hframe->AddFrame(hslider, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    hf_2->AddFrame(hslider, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     
     // exit button
-    TGTextButton *exit = new TGTextButton(hframe, "&Exit", "gApplication->Terminate(0)");
-    hframe->AddFrame(exit, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    TGTextButton *exit = new TGTextButton(hf_2, "&Exit", "gApplication->Terminate(0)");
+    hf_2->AddFrame(exit, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     
-    fMain->AddFrame(hframe, new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
-    
+    // add children to parent frame
+    fMain->AddFrame(hf_main, new TGLayoutHints(kLHintsCenterX, 2, 2, 2, 2));
+
     // set a name to the main frame
-    fMain->SetWindowName("Simple Example");
+    fMain->SetWindowName("Scroll and roll");
     
     // map all subwindows of main frame
     fMain->MapSubwindows();
@@ -64,15 +88,15 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     fMain->MapWindow();
 }
 MyMainFrame::~MyMainFrame(){
-    //fEcanvas->Clear();
-    //delete fEcanvas;
+    canvas_gain->Clear();
+    delete canvas_gain;
     // clean up used widgets: frames, buttons, layout hints
     fMain->Cleanup();
     delete fMain;
 }
-void MyMainFrame::DoDraw(Int_t pos){
+void MyMainFrame::DoDrawGain(Int_t pos){
     Double_t RT_f, GN_f, GN_m;
-    Int_t charge, s, c, p;
+    Int_t charge, s, c, p, gain, shape;
     
     TTree *tr_rawdata;
     std::string file_name = "Data/20170808T143522/g2_s2_extpulse/Results.root"; // F_P => Reads only one file
@@ -89,16 +113,45 @@ void MyMainFrame::DoDraw(Int_t pos){
     tr_rawdata->SetBranchAddress("s", &s);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("c", &c);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("p", &p);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("gain", &gain);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("shape", &shape);    // initialize subrun branch
     
     hprof = new TProfile("hprof",Form("2017929 g3 s2 channel %d", pos),10,0,218200);
     hprof->SetMaximum(30);
-    //if(gain = 2) hprof->SetMaximum(20);
-    //if(gain = 3) hprof->SetMaximum(30);
+    if(gain == 2) hprof->SetMaximum(20);
+    if(gain == 3) hprof->SetMaximum(30);
     tr_rawdata->Draw("(0.33*6241)*(GN_m/charge):charge>>hprof",Form("c==%d", pos),"*");
     
-    TCanvas *fCanvas = fEcanvas->GetCanvas();
+    TCanvas *fCanvas = canvas_gain->GetCanvas();
     fCanvas->cd();
     fCanvas->Update();
+}
+void DoDrawFEMB(){
+    Double_t RT_f1, GN_f1, GN_m1;
+    Int_t charge1, s1, c1, p1;
+    
+    TTree *tr_rawdata1;
+    std::string file_name1 = "Data/20170808T143522/g2_s2_extpulse/Results.root"; // F_P => Reads only one file
+    TFile *inputFile1 = new TFile(file_name1.c_str(), "READ");
+    tr_rawdata1 = (TTree*) inputFile1->Get("roast_beef");
+    if( !tr_rawdata1 ){
+        std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0);
+    }
+    tr_rawdata1->SetBranchAddress("RT_f", &RT_f1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("GN_f", &GN_f1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("GN_m", &GN_m1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("charge", &charge1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("s", &s1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("c", &c1);    // initialize subrun branch
+    tr_rawdata1->SetBranchAddress("p", &p1);    // initialize subrun branch
+    
+    //h2 = new TH2F("h2","a hist",128,0,128,10,0,218200);
+    //tr_rawdata1->Draw("charge1:c1>>h2","(0.33*6241)*GN_f/charge1*(p1==20 && GN_f1 < 1e9)","colz");
+    
+    //TCanvas *fCanvas = canvas_femb->GetCanvas();
+    //fCanvas->cd();
+    //fCanvas->Update();
 }
 void MyMainFrame::DoText(const char */*text*/){
     // Handle text entry widgets.
@@ -131,7 +184,7 @@ void MyMainFrame::DoSlider(Int_t pos){
 
 void execute(){
     // popup the GUI
-    new MyMainFrame(gClient->GetRoot(),600,400);
+    new MyMainFrame(gClient->GetRoot(),400,600);
 }
 
 int main(int argc, char **argv){
