@@ -34,7 +34,7 @@ Double_t signalSizes_fpga[64] = {0.606,0.625,0.644,0.663,0.682,0.701,0.720,0.739
     1.459,1.478, 1.497,1.516,1.535,1.554,1.573,1.592,1.611,1.629,1.648,1.667,1.686,1.705,1.724,1.743,
     1.762,1.781,1.800}; //V
 
-void Ntuple_dat2(const char* param_file ,const char* input_file){
+void Ntuple_dat(const char* param_file ,const char* input_file){
     Analyze foo;
     //
     // read parameters
@@ -102,7 +102,7 @@ void Ntuple_dat2(const char* param_file ,const char* input_file){
     
     //
     // write root file
-    TFile f(Form("Results/%s/Tree_%s_g%d_s%d.root",time_stamp.c_str(),time_stamp.c_str(),gain, shape),"recreate");
+    TFile f(Form("Data/%s/g%d_s%d_extpulse/Results.root", time_stamp.c_str(), gain, shape),"recreate");
     TTree roast_beef("roast_beef","a big tree with stuff");
     roast_beef.Branch("RT_f",&RT_f,"RT_f/D");
     roast_beef.Branch("GN_f",&GN_f,"GN_f/D");
@@ -111,6 +111,8 @@ void Ntuple_dat2(const char* param_file ,const char* input_file){
     roast_beef.Branch("s",&s,"s/I");
     roast_beef.Branch("c",&c,"c/I");
     roast_beef.Branch("p",&p,"p/I");
+    roast_beef.Branch("gain",&gain,"gain/I");
+    roast_beef.Branch("shape",&shape,"shape/I");
     //roast_beef.Branch("temp",&temp,"temp/I");       //x
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
@@ -158,6 +160,8 @@ void Ntuple_dat2(const char* param_file ,const char* input_file){
                 s = subrunIn;
                 c = chanIn;
                 p = p;
+                gain = gain;
+                shape = shape;
                 roast_beef.Fill();
             }
         }
