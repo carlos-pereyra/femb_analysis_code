@@ -1,5 +1,10 @@
 #include <TQObject.h>
 #include <RQ_OBJECT.h>
+#include "TGSlider.h"
+#include "TTree.h"
+#include "TProfile.h"
+#include "TFile.h"
+#include "TGNumberEntry.h"
 
 class TGWindow;
 class TGMainFrame;
@@ -9,7 +14,12 @@ class MyMainFrame {
     RQ_OBJECT("MyMainFrame")
 private:
     TGMainFrame         *fMain;
+    TGHorizontalFrame   *hframe;
     TRootEmbeddedCanvas *fEcanvas;
+    
+    TGTextEntry         *fTeh1;
+    TGLayoutHints       *fTbh1;
+    
 public:
     MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h);
     virtual ~MyMainFrame();
