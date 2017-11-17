@@ -82,7 +82,7 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     
     //          horizontal level 3          //
     hfm_3 = new TGHorizontalFrame(fMain, w, h);
-    bot = new TGCompositeFrame(hfm_3, w, 10, kSunkenFrame);
+    //bot = new TGCompositeFrame(hfm_3, w, 10, kSunkenFrame);
     
     // exit button
     TGTextButton *exit = new TGTextButton(hfm_3, "&Exit", "gApplication->Terminate(0)");
@@ -91,9 +91,13 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     TGTextButton *draw_wf = new TGTextButton(hfm_3, "&Draw Waveform");
     draw_wf->Connect("Clicked()","MyMainFrame",this,"DoDrawWf()");
     
+    // number entry
+    Nent = new TGNumberEntryField(hfm_3, kNENT_ID, 0.6, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive);
+    
+    
     hfm_3->AddFrame(exit, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     hfm_3->AddFrame(draw_wf, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
-    
+    hfm_3->AddFrame(Nent, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     // file browser
     //pBrowser = new TGFileBrowser(p);
     //p->SetEditable(kFALSE);
@@ -143,20 +147,25 @@ void MyMainFrame::DoDrawGain(Int_t pos){
         std::cout << "Error opening input file tree, exiting" << std::endl;
         gSystem->Exit(0);
     }
-    tr_rawdata->SetBranchAddress("RT_f", &RT_f);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("GN_f", &GN_f);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("GN_m", &GN_m);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("RT_f", &RT_f);        // initialize subrun branch
+    tr_rawdata->SetBranchAddress("GN_f", &GN_f);        // initialize subrun branch
+    tr_rawdata->SetBranchAddress("GN_m", &GN_m);        // initialize subrun branch
     tr_rawdata->SetBranchAddress("charge", &charge);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("s", &s);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("c", &c);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("p", &p);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("gain", &gain);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("shape", &shape);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("s", &s);              // initialize subrun branch
+    tr_rawdata->SetBranchAddress("c", &c);              // initialize subrun branch
+    tr_rawdata->SetBranchAddress("p", &p);              // initialize subrun branch
+    tr_rawdata->SetBranchAddress("gain", &gain);        // initialize subrun branch
+    tr_rawdata->SetBranchAddress("shape", &shape);      // initialize subrun branch
     
-    hprof = new TProfile("hprof",Form("2017929 g3 s2 channel %d", pos),10,0,218200);
-    hprof->SetMaximum(30);
-    if(gain == 2) hprof->SetMaximum(20);
-    if(gain == 3) hprof->SetMaximum(30);
+    Long64_t nEntries(tr_rawdata->GetEntries());
+    tr_rawdata->GetEntry(0);
+    for(Long64_t entry(0); entry < nEntries; ++entry) {
+        if (c == pos) { gain = gain; }
+    }
+    
+    hprof = new TProfile("hprof",Form("gain: [%d] shape: [%d] channel: [%d]", gain, shape, pos),10,0,218200);
+    if(gain == 2) hprof->SetMaximum(40);
+    if(gain == 3) hprof->SetMaximum(40);
     tr_rawdata->Draw("(0.33*6241)*(GN_m/charge):charge>>hprof",Form("c==%d", pos),"*");
     
     TCanvas *fCanvas = canvas_gain->GetCanvas();
@@ -166,6 +175,7 @@ void MyMainFrame::DoDrawGain(Int_t pos){
 void MyMainFrame::DoDrawFEMB(){
     Double_t RT_f, GN_f, GN_m;
     Int_t charge, s, c, p;
+    std::string pesto_pasta;
     
     TTree *tr_rawdata;
     std::string file_name = "Data/20170808T143522/g2_s2_extpulse/Results.root"; // F_P => Reads only one file
@@ -182,23 +192,25 @@ void MyMainFrame::DoDrawFEMB(){
     tr_rawdata->SetBranchAddress("s", &s);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("c", &c);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("p", &p);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("time_stamp", &pesto_pasta);
     
-    h2 = new TH2F("h2","a hist",128,0,128,10,0,218200);
-    tr_rawdata->Draw("charge:c>>h2","(0.33*6241)*GN_f/charge*(p==19)","colz");
+    h2 = new TH2F("h2",Form("FEMB Summary: %s", pesto_pasta.c_str()),128,0,128,10,0,218200);
+    tr_rawdata->Draw("charge:c>>h2","(0.33*6241)*GN_m/charge*(p==11)","colz");
     
     TCanvas *fCanvas_x = canvas_femb->GetCanvas();
     fCanvas_x->cd();
     fCanvas_x->Update();
 }
 void MyMainFrame::DoDrawWf(){
+    std::vector<unsigned short> *wfIn;
+    std::vector<unsigned short> wf;
     const int const_numSubrun = 64, const_numChan = 128;
     unsigned short subrunIn, chanIn;    //output tree and variable
-    std::vector<unsigned short> wf, *wfIn;;
 
-    TTree *tr_rawdata;
-    //string file_name = file_vector.at(f_p); // F_P => Reads only one file
     TString food = Form("Data/20170808T143522/g2_s2_extpulse/gainMeasurement_femb_1-parseBinaryFile.root");
     TFile *inputFile = new TFile(food, "READ");
+    
+    TTree *tr_rawdata;
     tr_rawdata = (TTree*) inputFile->Get("femb_wfdata");
     if( !tr_rawdata ){
         std::cout << "Error opening input file tree, exiting" << std::endl;
@@ -210,18 +222,18 @@ void MyMainFrame::DoDrawWf(){
     Long64_t nEntries(tr_rawdata->GetEntries());          // 11 subrun * 128 channels = 1408 entries (wf)
     tr_rawdata->GetEntry(0);
     
+    wf.clear();
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
         if( subrunIn < 0 || subrunIn >= const_numSubrun ) continue;
         if( chanIn < 0 || chanIn >= const_numChan ) continue;
-        wf.clear();
-        if( chanIn == 16 && subrunIn == 2){
+        if( chanIn == 48 && subrunIn == 10){
             for( unsigned int s = 0 ; s < wfIn->size() ; s++ ){//store waveform vector in array for quick access
                 wf.push_back( wfIn->at(s) );
             }
         }
     }
-    TH1F *plot = new TH1F("plot","yea a plot",wf.size(),1,wf.size());
+    TH1F *plot = new TH1F("plot","Waveform Plot Channel: _ Subrun: _",wf.size(),1,wf.size());
     for (int idx = 0; idx<wf.size(); idx++) {
         plot->SetBinContent(idx, wf.at(idx));
     }

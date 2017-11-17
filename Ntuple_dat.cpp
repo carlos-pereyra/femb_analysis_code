@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
@@ -102,6 +103,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     
     //
     // write root file
+    cout << "" << endl;
     TFile f(Form("Data/%s/g%d_s%d_extpulse/Results.root", time_stamp.c_str(), gain, shape),"recreate");
     TTree roast_beef("roast_beef","a big tree with stuff");
     roast_beef.Branch("RT_f",&RT_f,"RT_f/D");
@@ -113,6 +115,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("p",&p,"p/I");
     roast_beef.Branch("gain",&gain,"gain/I");
     roast_beef.Branch("shape",&shape,"shape/I");
+    roast_beef.Branch("timestamp",&time_stamp,"time_stamp/C");
     //roast_beef.Branch("temp",&temp,"temp/I");       //x
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
@@ -162,6 +165,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                 p = p;
                 gain = gain;
                 shape = shape;
+                time_stamp = time_stamp;
                 roast_beef.Fill();
             }
         }

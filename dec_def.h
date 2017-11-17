@@ -12,6 +12,7 @@
 #include "TGTextBuffer.h"
 #include "TGSplitter.h"
 #include "TGFileBrowser.h"
+#include "TGNumberEntry.h"
 
 #include "TTree.h"
 #include "TProfile.h"
@@ -36,6 +37,7 @@ private:
     TGTextBuffer        *fTbh1;
     TGLayoutHints       *fBly;
     TGFileBrowser       *pBrowser;
+    TGNumberEntryField  *Nent;
     
     TH2F                *h2;
     TProfile            *hprof;
@@ -52,5 +54,6 @@ public:
 
 enum ETestCommandIdentifiers {
     HId1,
-    HSId1
+    HSId1,
+    kNENT_ID
 };
