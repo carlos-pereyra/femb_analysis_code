@@ -5,7 +5,12 @@
 #include <TRandom.h>
 #include <TGButton.h>
 #include <TRootEmbeddedCanvas.h>
+#include "TSpectrum.h"
+#include "TROOT.h"
 #include "dec_def.h"
+
+std::vector<unsigned short> *wfIn;
+std::vector<unsigned short> wf;
 
 Double_t myfunction(Double_t *x, Double_t *par)
 {
@@ -18,11 +23,13 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     // create a main frame
     fMain = new TGMainFrame(p,w,h);
     
+    //--------------------------------------//
     //          horizontal level 1          //
+    //--------------------------------------//
     hfm_1 = new TGHorizontalFrame(fMain, w, h);
     top = new TGCompositeFrame(hfm_1,10,10, kSunkenFrame);
     
-    // left side top level
+    //          left side: frame            //
     vf_1 = new TGVerticalFrame(hfm_1, 10, 10);
     hf_1 = new TGHorizontalFrame(vf_1, 10, 10); //internal to left vertical
     l_frame = new TGCompositeFrame(vf_1, 10, 10, kSunkenFrame);
@@ -32,16 +39,16 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
 
     hfm_1->AddFrame(vf_1, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
     
-    // create canvas
+    // left side: create canvas
     canvas_femb = new TRootEmbeddedCanvas("canvas_femb", l_frame, w, 0.5*h);     // create canvas widget
     l_frame->AddFrame(canvas_femb, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
-    // draw button
+    // left side: draw button
     TGTextButton *draw = new TGTextButton(hf_1, "&Draw Summary");
     draw->Connect("Clicked()","MyMainFrame",this,"DoDrawFEMB()");
     hf_1->AddFrame(draw, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     
-    // right side top level
+    //          right side: frame           //
     vf_2 = new TGVerticalFrame(hfm_1, 10, 10);
     hf_2 = new TGHorizontalFrame(vf_2, 10, 10); //internal to right vertical
     r_frame = new TGCompositeFrame(vf_2, 10, 10, kSunkenFrame);
@@ -51,59 +58,55 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
 
     hfm_1->AddFrame(vf_2, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
     
-    // create canvas
+    // right side: create canvas
     canvas_gain = new TRootEmbeddedCanvas("canvas_gain", r_frame, w, 0.5*h);     // create canvas widget
     r_frame->AddFrame(canvas_gain, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
-    // slider control
-    TGHSlider *hslider = new TGHSlider(hf_2,150,kSlider1 | kScaleDownRight,HSId1);
+    // right side: slider control
+    hslider = new TGHSlider(hf_2,150,kSlider1 | kScaleDownRight,HSId1);
     //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoSlider(Int_t)");
     hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawGain(Int_t)");
     hslider->SetRange(0,127);
     hslider->SetPosition(0);
     hf_2->AddFrame(hslider, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     
-    // text box
+    // right side: text box
     //fTeh1 = new TGTextEntry(hf_2, fTbh1 = new TGTextBuffer(10), HId1);
     //fTbh1->AddText(0, "0");
     //fBly = new TGLayoutHints(kLHintsTop | kLHintsLeft | kLHintsExpandX, 0, 0, 3, 0);
     //fTeh1->Connect("TextChanged(char*)", "MyMainFrame", this, "DoText(char*)");
     //hf_2->AddFrame(fTeh1, fBly);
     
+    //--------------------------------------//
     //          horizontal level 2          //
+    //--------------------------------------//
     hfm_2 = new TGHorizontalFrame(fMain, w, h);
-    //mid = new TGCompositeFrame(hfm_2,w,10, kSunkenFrame);
     
     // create canvas
-    canvas_wf = new TRootEmbeddedCanvas("canvas_femb", hfm_2, w*2, 0.5*h);     // create canvas widget
-    //mid->AddFrame(canvas_wf, new TGLayoutHints(kLHintsExpandX, 10, 10, 10, 1));
-    
+    canvas_wf = new TRootEmbeddedCanvas("canvas_wf", hfm_2, w*2, 0.5*h);     // create canvas widget
     hfm_2->AddFrame(canvas_wf, new TGLayoutHints(kLHintsCenterY | kLHintsExpandX));
     
+    //--------------------------------------//
     //          horizontal level 3          //
+    //--------------------------------------//
     hfm_3 = new TGHorizontalFrame(fMain, w, h);
-    //bot = new TGCompositeFrame(hfm_3, w, 10, kSunkenFrame);
-    
+    //bot = new TGCompositeFrame(hfm_3, 800, 10, kSunkenFrame);
+
     // exit button
     TGTextButton *exit = new TGTextButton(hfm_3, "&Exit", "gApplication->Terminate(0)");
     
-    // draw button
-    TGTextButton *draw_wf = new TGTextButton(hfm_3, "&Draw Waveform");
-    draw_wf->Connect("Clicked()","MyMainFrame",this,"DoDrawWf()");
-    
     // number entry
-    Nent = new TGNumberEntryField(hfm_3, kNENT_ID, 0.6, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAPositive);
+    Nent_chan = new TGNumberEntry(hfm_3, 1, 6, kENTRY1, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAAnyNumber, TGNumberFormat::kNELLimitMinMax, 0,127);
+    Nent_chan->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawWf(Long_t)");
+
+    Nent_sub = new TGNumberEntry(hfm_3, 1, 6, kENTRY2, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAAnyNumber, TGNumberFormat::kNELLimitMinMax, 0,10);
+    Nent_sub->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawWf(Long_t)");
     
-    
-    hfm_3->AddFrame(exit, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
-    hfm_3->AddFrame(draw_wf, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
-    hfm_3->AddFrame(Nent, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
-    // file browser
-    //pBrowser = new TGFileBrowser(p);
-    //p->SetEditable(kFALSE);
-    //pBrowser->AddFSDirectory("/", "/");
-    //pBrowser->GotoDir(gSystem->pwd());
-    
+    std::cout << "stuff: " << kENTRY1 << std::endl;
+    // add all widgets to frame
+    hfm_3->AddFrame(exit, new TGLayoutHints(kLHintsLeft, 5, 5, 3, 4));
+    hfm_3->AddFrame(Nent_chan, new TGLayoutHints(kLHintsCenterX, 0, 0, 0, 0));
+    hfm_3->AddFrame(Nent_sub, new TGLayoutHints(kLHintsRight, 0, 0, 0, 0));
     
     //          fmain stuff         //
     
@@ -124,16 +127,6 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     // map main frame
     fMain->MapWindow();
     
-}
-MyMainFrame::~MyMainFrame(){
-    canvas_gain->Clear();
-    delete canvas_gain;
-    
-    canvas_femb->Clear();
-    delete canvas_femb;
-    // clean up used widgets: frames, buttons, layout hints
-    fMain->Cleanup();
-    delete fMain;
 }
 void MyMainFrame::DoDrawGain(Int_t pos){
     Double_t RT_f, GN_f, GN_m;
@@ -175,7 +168,7 @@ void MyMainFrame::DoDrawGain(Int_t pos){
 void MyMainFrame::DoDrawFEMB(){
     Double_t RT_f, GN_f, GN_m;
     Int_t charge, s, c, p;
-    std::string pesto_pasta;
+    Char_t *pesto_pasta;
     
     TTree *tr_rawdata;
     std::string file_name = "Data/20170808T143522/g2_s2_extpulse/Results.root"; // F_P => Reads only one file
@@ -192,21 +185,24 @@ void MyMainFrame::DoDrawFEMB(){
     tr_rawdata->SetBranchAddress("s", &s);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("c", &c);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("p", &p);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("time_stamp", &pesto_pasta);
+    tr_rawdata->SetBranchAddress("timestamp", &pesto_pasta);
     
-    h2 = new TH2F("h2",Form("FEMB Summary: %s", pesto_pasta.c_str()),128,0,128,10,0,218200);
+    h2 = new TH2F("h2",Form("FEMB Summary: %s", pesto_pasta),128,0,128,10,0,218200);
     tr_rawdata->Draw("charge:c>>h2","(0.33*6241)*GN_m/charge*(p==11)","colz");
+    h2->SetStats(0);
     
     TCanvas *fCanvas_x = canvas_femb->GetCanvas();
     fCanvas_x->cd();
     fCanvas_x->Update();
 }
-void MyMainFrame::DoDrawWf(){
-    std::vector<unsigned short> *wfIn;
-    std::vector<unsigned short> wf;
+void MyMainFrame::DoDrawWf(Long_t pos){
+    TGNumberEntry *sender = (TGNumberEntry *) gTQSender;
+    Int_t id = sender->WidgetId();
+    
+    wf.clear();
     const int const_numSubrun = 64, const_numChan = 128;
     unsigned short subrunIn, chanIn;    //output tree and variable
-
+    
     TString food = Form("Data/20170808T143522/g2_s2_extpulse/gainMeasurement_femb_1-parseBinaryFile.root");
     TFile *inputFile = new TFile(food, "READ");
     
@@ -219,25 +215,34 @@ void MyMainFrame::DoDrawWf(){
     tr_rawdata->SetBranchAddress("subrun", &subrunIn);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("chan", &chanIn);        // initialize channel branch
     tr_rawdata->SetBranchAddress("wf", &wfIn);            // initialize waveform branch
+    
+    //tr_rawdata->Draw("wf;1",Form("(chan==%d && subrun==%d)",Nent_chan->GetIntNumber(),Nent_sub->GetIntNumber()),"L");
+    
     Long64_t nEntries(tr_rawdata->GetEntries());          // 11 subrun * 128 channels = 1408 entries (wf)
     tr_rawdata->GetEntry(0);
     
-    wf.clear();
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
         if( subrunIn < 0 || subrunIn >= const_numSubrun ) continue;
         if( chanIn < 0 || chanIn >= const_numChan ) continue;
-        if( chanIn == 48 && subrunIn == 10){
-            for( unsigned int s = 0 ; s < wfIn->size() ; s++ ){//store waveform vector in array for quick access
-                wf.push_back( wfIn->at(s) );
-            }
+        if( chanIn == Nent_chan->GetIntNumber() && subrunIn == Nent_sub->GetIntNumber()){
+            for( unsigned int s = 0 ; s < wfIn->size() ; s++ ) wf.push_back(wfIn->at(s));
+            TH1F *h1 = new TH1F("h1",Form("Waveform Plot Channel: %d Subrun: %d", chanIn, subrunIn),wf.size(),1,wf.size());
+            for (int idx = 0; idx<wf.size(); idx++) h1->SetBinContent(idx, wf.at(idx));
+            h1->Draw();
+            h1->SetMaximum(4096);
+            
+            TH1F *d = new TH1F("d","",wf.size(),0,wf.size());
+            Double_t *source = new Double_t[wf.size()];
+            TSpectrum *s = new TSpectrum();
+            /*for (int idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
+            s->Background(source,wf.size(),6,kBackIncreasingWindow,kBackOrder2,kFALSE, kBackSmoothing3,kFALSE);
+            for (int idx = 0; idx < wf.size(); idx++) d->SetBinContent(idx,source[idx]);
+            d->SetLineColor(kRed);
+            d->Draw("same L");*/
         }
     }
-    TH1F *plot = new TH1F("plot","Waveform Plot Channel: _ Subrun: _",wf.size(),1,wf.size());
-    for (int idx = 0; idx<wf.size(); idx++) {
-        plot->SetBinContent(idx, wf.at(idx));
-    }
-    plot->Draw();
+    
     
     TCanvas *fCanvas_y = canvas_wf->GetCanvas();
     fCanvas_y->cd();
@@ -247,7 +252,7 @@ void MyMainFrame::DoText(const char */*text*/){
     // Handle text entry widgets.
     TGTextEntry *te = (TGTextEntry *) gTQSender;
     Int_t id = te->WidgetId();
-    //hslider->SetPosition(atoi(fTbh1->GetString()));
+    hslider->SetPosition(atoi(fTbh1->GetString()));
 }
 void MyMainFrame::DoSlider(Int_t pos){
     // Handle slider widgets.
@@ -271,7 +276,20 @@ void MyMainFrame::DoSlider(Int_t pos){
     //gClient->NeedRedraw(fTeh1);
 
 }
-
+MyMainFrame::~MyMainFrame(){
+    // clean up used widgets: frames, buttons, layout hints
+    fMain->Cleanup();
+    delete fMain;
+    
+    canvas_gain->Clear();
+    delete canvas_gain;
+    
+    canvas_femb->Clear();
+    delete canvas_femb;
+    
+    canvas_wf->Clear();
+    delete canvas_wf;
+}
 void execute(){
     // popup the GUI
     new MyMainFrame(gClient->GetRoot(),400,600);
@@ -283,3 +301,9 @@ int main(int argc, char **argv){
     theApp.Run();
     return 0;
 }
+
+// file browser
+//pBrowser = new TGFileBrowser(p);
+//p->SetEditable(kFALSE);
+//pBrowser->AddFSDirectory("/", "/");
+//pBrowser->GotoDir(gSystem->pwd());

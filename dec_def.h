@@ -19,6 +19,7 @@
 #include "TFile.h"
 #include "TSystem.h"
 #include "TH2.h"
+//#include "TSpectrum.h"
 
 class TGWindow;
 class TGMainFrame;
@@ -26,6 +27,7 @@ class TRootEmbeddedCanvas;
 
 class MyMainFrame {
     RQ_OBJECT("MyMainFrame")
+
 private:
     TGMainFrame         *fMain;
     TGHorizontalFrame   *hfm_1, *hfm_2, *hfm_3, *hf_1, *hf_2;
@@ -37,7 +39,8 @@ private:
     TGTextBuffer        *fTbh1;
     TGLayoutHints       *fBly;
     TGFileBrowser       *pBrowser;
-    TGNumberEntryField  *Nent;
+    TGNumberEntry       *Nent_chan, *Nent_sub;
+    TGHSlider           *hslider;
     
     TH2F                *h2;
     TProfile            *hprof;
@@ -47,7 +50,7 @@ public:
     virtual ~MyMainFrame();
     void DoDrawGain(Int_t pos);
     void DoDrawFEMB();
-    void DoDrawWf();
+    void DoDrawWf(Long_t);
     void DoText(const char *text);
     void DoSlider(Int_t pos);
 };
@@ -55,5 +58,23 @@ public:
 enum ETestCommandIdentifiers {
     HId1,
     HSId1,
-    kNENT_ID
+    kENTRY1,
+    kENTRY2,
+    kNESInteger,
+    kNELLimitMinMax,
+    
+    kBackOrder2 =0,
+    kBackOrder4 =1,
+    kBackOrder6 =2,
+    kBackOrder8 =3,
+    kBackIncreasingWindow =0,
+    kBackDecreasingWindow =1,
+    kBackSmoothing3 =3,
+    kBackSmoothing5 =5,
+    kBackSmoothing7 =7,
+    kBackSmoothing9 =9,
+    kBackSmoothing11 =11,
+    kBackSmoothing13 =13,
+    kBackSmoothing15 =15
 };
+
