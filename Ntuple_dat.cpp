@@ -41,7 +41,8 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     // read parameters
     //
     vector<string> words  = getTimeStamp(param_file);
-    string time_stamp = words.at(0);
+    std::string time_stamp = words.at(0);
+    Char_t *ts = (char *) time_stamp.c_str() ;
     
     vector<double> par = getParameters(param_file);
     int s_l = par.at(1);
@@ -115,7 +116,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("p",&p,"p/I");
     roast_beef.Branch("gain",&gain,"gain/I");
     roast_beef.Branch("shape",&shape,"shape/I");
-    roast_beef.Branch("timestamp",&time_stamp,"time_stamp/C");
+    roast_beef.Branch("timestamp",(void*) ts,"ts/C");
     //roast_beef.Branch("temp",&temp,"temp/I");       //x
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
@@ -165,11 +166,12 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                 p = p;
                 gain = gain;
                 shape = shape;
-                time_stamp = time_stamp;
+                ts = ts;
                 roast_beef.Fill();
             }
         }
         cout << "subrun: " << subrunIn << " channel: " << chanIn << endl;
+        //cout << " ts: " << ts << endl;
     }
     inputFile->Close();
     roast_beef.Write();
