@@ -84,8 +84,8 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     if (f_p==6){ gain = 3; shape = 2; }
     if (f_p==7){ gain = 3; shape = 3; }
     Double_t RT_f_fited = 0, RT_f = 0, RT_f_temp = 0, RT_k = pulse_shape.at(f_p);
-    Double_t GN_f_fited = 0, GN_f = 0, GN_f_temp = 0, GN_m = 0;
-    Int_t s = 0, c = 0, p = 0, x = 0, y = 0, x_s = 0, bl = 0, charge = 0, bl_rms = 0;
+    Double_t GN_f_fited = 0, GN_f = 0, GN_f_temp = 0, GN_m = 0, chi_v = 1, chi_t = 0, x_s = 0;
+    Int_t s = 0, c = 0, p = 0, x = 0, y = 0, bl = 0, bl_s = 0, charge = 0, bl_rms = 0, fit_range = 30;
     //
     // read root file
     TTree *tr_rawdata;
@@ -114,6 +114,8 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("s",&s,"s/I");
     roast_beef.Branch("c",&c,"c/I");
     roast_beef.Branch("p",&p,"p/I");
+    roast_beef.Branch("bl",&bl,"bl/I");
+    roast_beef.Branch("bl_s",&bl_s,"bl_s/I");
     roast_beef.Branch("gain",&gain,"gain/I");
     roast_beef.Branch("shape",&shape,"shape/I");
     roast_beef.Branch("timestamp",(void*) ts,"ts/C");
@@ -123,43 +125,64 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
         if( subrunIn < 0 || subrunIn >= const_numSubrun ) continue;
         if( chanIn < 0 || chanIn >= const_numChan ) continue;
         wf.clear();
-        for( unsigned int s = 0 ; s < wfIn->size() ; s++ ){//store waveform vector in array for quick access
-            wf.push_back( wfIn->at(s) );
+        for( unsigned int idx = 0 ; idx < wfIn->size() ; idx++ ){//store waveform vector in array for quick access
+            wf.push_back( wfIn->at(idx) );
         }
+        //if(subrunIn == 1){
+        //foo.set_run_info(subrunIn,chanIn,f_p);          // initialize vector of structures size
+        //foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+
+        //}
+        
         foo.set_run_info(subrunIn,chanIn,f_p);    // initialize vector of structures size
         foo.set_run_channel(subrunIn,chanIn);
-        foo.set_baseline(subrunIn,chanIn,f_p,wf);
-        foo.set_baseline_rms(subrunIn,chanIn,f_p,wf);
         foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+        foo.set_baseline(subrunIn,chanIn,f_p,wf);
         bl = foo.get_baseline(subrunIn,chanIn,f_p);
-        charge = ((signalSizes_fpga[s-1]-signalSizes_fpga[0])*184*10000/1.6); // assumes s>=2
+
         TH1F *hist_peak = new TH1F("","",50,0,49);
         if (subrunIn > 1) {
-            for (p = p_l; p < 20; p++) {
-                RT_f_fited = 0;
-                RT_f_temp = 0;
-                Int_t idx = 2;
+            for (p = 0; p < foo.get_pos_npeaks(subrunIn,chanIn,f_p)-2; p++) {
+                
                 x = foo.get_pos_peak_x(subrunIn,chanIn,f_p,p);
                 y = foo.get_pos_peak_y(subrunIn,chanIn,f_p,p);
-                while (idx < 7) {                 // fit process
-                    x_s = idx;
-                    for(int el = 0; el < 70; el++) hist_peak->SetBinContent(el,(wf.at(x - x_s + el) - bl));
-                    Int_t fit_range = 30;                                           // set fit range
-                    TF1 *resp_fit = new TF1("response_fit",fudge_sundae,0,49,2);    // define response function
+
+                TF1 *resp_fit = new TF1("resp_fit",fudge_sundae,0,49,2);    // define response function
+                
+                // fit
+                //--------------------------------------------------------------------
+                //std::cout << " --- --- --- --- --- " << p;
+                int i_a = 1;
+                while (i_a < 20) {
+                    x_s = i_a*0.5;
+                    if (x_s>x) break;
+                    for(int i_b = 0; i_b < 49; i_b++) {
+                        if (x+i_b>wf.size()) break;
+                        hist_peak->SetBinContent(i_b,(wf.at(x - x_s + i_b) - bl));
+                    }
                     resp_fit->SetParameters(2500,x_s);                              // set parameters
-                    hist_peak->Fit("response_fit","oq","",0, fit_range);            // set fit
+                    hist_peak->Fit("resp_fit","oq","",0, fit_range); // set fit
                     RT_f_fited = std::abs(resp_fit->GetParameter(1));               // set fit data
                     GN_f_fited = std::abs(resp_fit->GetParameter(0)/10);
-                    if ( std::abs(RT_f_fited-RT_k)<std::abs(RT_f_temp-RT_k) ){
+                    chi_v = resp_fit->GetChisquare();
+                    //std::cout << " x_s: " << x_s << "\t ch_v: " << chi_v << "\t ch_t: " << chi_t;
+                    //std::cout << " RT_f: " << RT_f_temp << " GN_f_temp: " << GN_f_temp << " y-bl: " << y-bl << std::endl;
+
+                    if( (std::abs(chi_t)/std::abs(chi_v))>1 || i_a==1 ) {
                         RT_f_temp = RT_f_fited;
                         GN_f_temp = GN_f_fited;
-                        //chi_fited = resp_fit->GetChisquare();
+                        chi_t = chi_v;
                     }
-                    idx++;
+                    i_a++;
                 }
+                //--------------------------------------------------------------------
+                std::cout << " --- --- --- --- --- final results" << std::endl;
+                std::cout << " s: " << subrunIn << " c: " << chanIn << " p: " << p << " x: " << x;
+                std::cout << " GN_f_temp: " << GN_f_temp << " y: " << y-bl << std::endl;
+                
                 RT_f = RT_f_temp;
                 GN_f = GN_f_temp;
-                GN_m = y;
+                GN_m = y-bl;
                 charge = 0; if(subrunIn>1) charge = ((signalSizes_fpga[subrunIn-1]-signalSizes_fpga[0])*184*10000/1.6); // assumes s>=2
                 s = subrunIn;
                 c = chanIn;
@@ -167,11 +190,12 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                 gain = gain;
                 shape = shape;
                 ts = ts;
+                bl = bl;
+                bl_s = bl_s;
                 roast_beef.Fill();
             }
         }
-        cout << "subrun: " << subrunIn << " channel: " << chanIn << endl;
-        //cout << " ts: " << ts << endl;
+        //cout << "subrun: " << subrunIn << " channel: " << chanIn << endl;
     }
     inputFile->Close();
     roast_beef.Write();
