@@ -75,20 +75,20 @@ class MyMainFrame {
 
 private:
     TGMainFrame         *fMain;
-    TGHorizontalFrame   *hfm_1, *hfm_2, *hfm_3, *hf_1, *hf_2;
-    TGVerticalFrame     *vf_1, *vf_2;
-    TGCompositeFrame    *l_frame, *r_frame, *top, *mid, *bot;
+    TGHorizontalFrame   *hfm_0, *hfm_0_0, *hfm_1, *hfm_2, *hfm_3, *hfm_4, *hf_1, *hf_2;
+    TGVerticalFrame     *vf_1, *vf_2, *vfm_3;
+    TGCompositeFrame    *l_frame, *r_frame, *top, *mid, *fFtop, *fFbottom;
     TRootEmbeddedCanvas *canvas_gain, *canvas_femb, *canvas_wf;
     
-    TGTextEntry         *fTeh1;
-    TGTextBuffer        *fTbh1;
+    TGTextEntry         *fTeh1, *tent1, *tent2;
+    TGTextBuffer        *fTbh1, *tbuf1, *tbuf2;
     TGLayoutHints       *fBly;
     TGFileBrowser       *pBrowser;
-    TGNumberEntry       *Nent_chan, *Nent_sub;
+    TGNumberEntry       *Nent_chan, *Nent_sub, *Nent_peak;
     TGHSlider           *hslider;
     
     TH2F                *h2;
-    TProfile            *hprof;
+    TProfile            *hprof, *hprof_m;
     
 public:
     MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h);
@@ -106,21 +106,10 @@ enum ETestCommandIdentifiers {
     HSId1,
     kENTRY1,
     kENTRY2,
+    kENTRY3,
     kNESInteger,
     kNELLimitMinMax,
-    
-    /*kBackOrder2 =0,
-    kBackOrder4 =1,
-    kBackOrder6 =2,
-    kBackOrder8 =3,
-    kBackIncreasingWindow =0,
-    kBackDecreasingWindow =1,
-    kBackSmoothing3 =3,
-    kBackSmoothing5 =5,
-    kBackSmoothing7 =7,
-    kBackSmoothing9 =9,
-    kBackSmoothing11 =11,
-    kBackSmoothing13 =13,
-    kBackSmoothing15 =15*/
+    Tentry1,
+    Tentry2
 };
 
