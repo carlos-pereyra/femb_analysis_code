@@ -6,7 +6,7 @@ class Analyze {
     public:
     
     struct waveform_struct{
-        int subrun, channel, pos_npeaks, neg_npeaks, wf_elements;
+        Int_t subrun, channel, pos_npeaks, neg_npeaks, wf_elements;
         Double_t pos_peak_mean, pos_peak_rms, neg_peak_mean, neg_peak_rms, rise_time, width; //peak stats
         Double_t baseline, baseline_rms, baseline_s;
         std::vector<Int_t> pos_peak_x;
@@ -31,7 +31,7 @@ class Analyze {
     void set_baseline_rms(int,int,int,std::vector<unsigned short> wf);
     
     // set peak mean & rms values
-    void set_peaks(int,int,int,std::vector<unsigned short> wf,Int_t); // determine pos & neg peaks
+    void set_peaks(int,int,int,int,std::vector<unsigned short> wf); // determine pos & neg peaks
 
     void set_pos_peak_mean(int,int,int);
     void set_neg_peak_mean(int,int,int);
@@ -49,10 +49,10 @@ class Analyze {
     int get_neg_npeaks(int,int,int); //full number of peaks (pos & neg)?
 
     // peak locations & amplitudes
-    Int_t get_pos_peak_x(int,int,int,int);
-    Int_t get_neg_peak_x(int,int,int,int);
-    Double_t get_pos_peak_y(int,int,int,int);
-    Double_t get_neg_peak_y(int,int,int,int);
+    Int_t get_pos_peak_x(int,int,int,unsigned long);
+    Int_t get_neg_peak_x(int,int,int,unsigned long);
+    Double_t get_pos_peak_y(int,int,int,unsigned long);
+    Double_t get_neg_peak_y(int,int,int,unsigned long);
     
     Double_t get_baseline(int,int,int);
     Double_t get_baseline_rms(int,int,int);
@@ -85,11 +85,11 @@ void Analyze::set_baseline(int subrun, int channel, int file, std::vector<unsign
     TSpectrum *background = new TSpectrum(80);
 
     Double_t *source = new Double_t[wf.size()];
-    for (Long_t idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
+    for (unsigned short idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
     
-    background->Background(source,wf.size(),32,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
+    background->Background(source,wf.size(),30,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
     TH1F *e = new TH1F(Form("e %d %d back", subrun, channel),"",wf.size(),0,wf.size()); // baseline hist
-    for (Long_t idx = 0; idx < wf.size()-1; idx++) e->Fill(source[idx]);
+    for (unsigned short idx = 0; idx < wf.size(); idx++) e->Fill(source[idx]);
     
     vector_of_struct[subrun][channel][file].at(0).baseline = e->GetMean();
 }
@@ -103,7 +103,7 @@ void Analyze::set_baseline_rms(int subrun, int channel, int file, std::vector<un
     vector_of_struct[subrun][channel][file].at(0).baseline_rms = baseline_rms;
 }
 
-void Analyze::set_peaks(int subrun, int channel, int file, std::vector<unsigned short> wf, Int_t interval){
+void Analyze::set_peaks(int subrun, int channel, int file, int shape, std::vector<unsigned short> wf){
     
     
     if(DBG) cout << "\n\tSetting Low & High Peaks (Subrun: " << subrun << " ,Channel: " << channel << ")\n" << endl;
@@ -112,24 +112,29 @@ void Analyze::set_peaks(int subrun, int channel, int file, std::vector<unsigned 
     
     //--------------------------------------------------------------------
     TH1F *h1 = new TH1F(Form("h1 %d %d", subrun, channel),"",wf.size(),0,wf.size());
-    for (int idx = 0; idx<wf.size(); idx++) h1->SetBinContent(idx, wf.at(idx));
+    for (unsigned short idx = 0; idx<wf.size(); idx++) h1->SetBinContent(idx, wf.at(idx));
     
     TH1F *d = new TH1F(Form("d %d %d set p", subrun, channel),"",wf.size(),0,wf.size());
     TH1F *e = new TH1F(Form("e %d %d set p", subrun, channel),"",wf.size(),0,wf.size()); // baseline hist
     TH1F *f = new TH1F(Form("f %d %d set p", subrun, channel),"",wf.size(),0,wf.size());
     
     Double_t *source = new Double_t[wf.size()];
-    TSpectrum *background_soup = new TSpectrum(80);
-    //TSpectrum *peak_soup = new TSpectrum(80);
+    TSpectrum *background = new TSpectrum(80);
     
-    for (Long_t idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
-    background_soup->Background(source,wf.size(),32,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
-    for (Long_t idx = 0; idx < wf.size()-1; idx++) d->SetBinContent(idx,source[idx]);
-    for (Long_t idx = 0; idx < wf.size()-1; idx++) e->Fill(d->GetBinContent(idx));
+    for (unsigned short idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
+    background->Background(source,wf.size(),29,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
+    for (unsigned short idx = 0; idx < wf.size(); idx++) d->SetBinContent(idx,source[idx]);
+    for (unsigned short idx = 0; idx < wf.size(); idx++) e->Fill(d->GetBinContent(idx));
     
-    Int_t nfound = background_soup->Search(h1,8,"",0.001);
-    Double_t *xpeaks = background_soup->GetPositionX();
-    Double_t *ypeaks = background_soup->GetPositionY();
+    
+    Int_t sigma = 0;
+    if (shape == 0) sigma = 4;
+    if (shape == 1) sigma = 4;
+    if (shape == 2) sigma = 8;
+    if (shape == 3) sigma = 8;
+    Int_t nfound = background->Search(h1,sigma,"",0.01);
+    Double_t *xpeaks = background->GetPositionX();
+    Double_t *ypeaks = background->GetPositionY();
     
     for (int idx = 0; idx < nfound; idx++) {
         if (ypeaks[idx] > (e->GetMean() + e->GetRMS() + 130) ) { // save these peaks (x - location, y - height)
@@ -216,7 +221,7 @@ int Analyze::get_neg_npeaks(int subrun,int channel,int file){ // number of posit
     return w.neg_npeaks;
 }
 
-Int_t Analyze::get_pos_peak_x(int subrun,int channel,int file,int element){
+Int_t Analyze::get_pos_peak_x(int subrun,int channel,int file,unsigned long element){
     waveform_struct w = vector_of_struct[subrun][channel][file].at(0);
     if (element < w.pos_peak_x.size()) {
         //std::cout << " you get x: " << w.pos_peak_x.at(element) << std::endl;
@@ -230,7 +235,7 @@ Int_t Analyze::get_pos_peak_x(int subrun,int channel,int file,int element){
     return w.pos_peak_x.at(element);
 }
 
-Int_t Analyze::get_neg_peak_x(int subrun,int channel,int file,int element){
+Int_t Analyze::get_neg_peak_x(int subrun,int channel,int file,unsigned long element){
     waveform_struct w = vector_of_struct[subrun][channel][file].at(0);
     if(DBG) if (element>w.neg_npeaks) cout << "\nAnalyze::get_neg_peak_x: outside of peaks_x matrix (Error)" << endl;
     if(DBG) if (element>w.neg_npeaks) cout << "\tSubrun: " << subrun << " Channel: " << channel << "\n" << endl;
@@ -239,7 +244,7 @@ Int_t Analyze::get_neg_peak_x(int subrun,int channel,int file,int element){
     return w.neg_peak_x.at(element);
 }
 
-Double_t Analyze::get_pos_peak_y(int subrun,int channel,int file,int element){
+Double_t Analyze::get_pos_peak_y(int subrun,int channel,int file,unsigned long element){
     waveform_struct w = vector_of_struct[subrun][channel][file].at(0);
     if (element < w.pos_peak_x.size()) {
         //std::cout << " you get y: " << w.pos_peak_y.at(element) << std::endl;
@@ -248,11 +253,12 @@ Double_t Analyze::get_pos_peak_y(int subrun,int channel,int file,int element){
     else {
         //std::cout << " you get y: 0" << std::endl;
         cout << "requested element is outside positive peak matrix size (Analyze::get_pos_peak_y)" << endl;
+        cout << " size of matrix:" << w.pos_peak_y.size() << endl;
         return 0;
     }
 }
 
-Double_t Analyze::get_neg_peak_y(int subrun,int channel,int file,int element){
+Double_t Analyze::get_neg_peak_y(int subrun,int channel,int file,unsigned long element){
     waveform_struct w = vector_of_struct[subrun][channel][file].at(0);
     if (element < w.neg_peak_x.size()) return w.neg_peak_y.at(element);
     else {
@@ -310,8 +316,8 @@ Int_t Analyze::get_risetime(int subrun, int channel, int file, int peak, std::ve
     
     float ratio;
     Double_t y1 = (w.pos_peak_y.at(peak));
-    Double_t y2;
-    Int_t risetime;
+    Double_t y2 = 0;
+    Int_t risetime = 0;
     
     for (int i = 0; i < 10; i++) {
         y2 = (wf[subrun][channel][file].at(w.pos_peak_x.at(peak)-i)-w.baseline);
@@ -336,7 +342,7 @@ Int_t Analyze::get_width(int subrun, int channel, int file, int peak, std::vecto
     
     float ratio;
     Double_t y1 = (w.pos_peak_y.at(peak)), y2;
-    Int_t width, L, R;
+    Int_t width, L = 0, R = 0;
     
     for (int i = 0; i < 25; i++) {
         y2 = (wf[subrun][channel][file].at(w.pos_peak_x.at(peak)-i)-w.baseline);

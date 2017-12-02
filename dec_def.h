@@ -86,19 +86,24 @@ private:
     TGFileBrowser       *pBrowser;
     TGNumberEntry       *Nent_chan, *Nent_sub, *Nent_peak;
     TGHSlider           *hslider;
+    TGTextButton        *gain;
+    TGComboBox          *fCombo;
     
     TH2F                *h2;
-    TProfile            *hprof, *hprof_m;
+    TProfile            *hprof_f, *hprof_m, *hprof_gs, *residual_f, *residual_m;
     
 public:
     MyMainFrame(const TGWindow *p,UInt_t w,UInt_t h);
     virtual ~MyMainFrame();
+    void DoDraw(Int_t pos);
     void DoDrawGain(Int_t pos);
+    void DoDrawRes(Int_t pos);
     void DoDrawFEMB();
-    void DoDrawWf(Long_t);
-    void DoDrawFit(Long_t);
+    void DoDrawWf();
+    void DoDrawFit();
     void DoText(const char *text);
     void DoSlider(Int_t pos);
+    void Echo(Int_t iden);
 };
 
 enum ETestCommandIdentifiers {
@@ -110,6 +115,8 @@ enum ETestCommandIdentifiers {
     kNESInteger,
     kNELLimitMinMax,
     Tentry1,
-    Tentry2
+    Tentry2,
+    kComboID1,
+    kComboID2
 };
 

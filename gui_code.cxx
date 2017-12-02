@@ -83,9 +83,8 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     //          horizontal level 1          //
     //--------------------------------------//
     hfm_1 = new TGHorizontalFrame(fMain, w, h);
-    //top = new TGCompositeFrame(hfm_1,10,10, kSunkenFrame);
     
-    //          left side: frame            //
+    // frame            //
     vf_1 = new TGVerticalFrame(hfm_1, 10, 10);
     hf_1 = new TGHorizontalFrame(vf_1, 10, 10); //internal to left vertical
     l_frame = new TGCompositeFrame(vf_1, 10, 10, kSunkenFrame);
@@ -95,16 +94,18 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
 
     hfm_1->AddFrame(vf_1, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
     
-    // left side: create canvas //* try moving this into DoDrawFEMB() -Cp
+    // create canvas //* try moving this into DoDrawFEMB() -Cp
     canvas_femb = new TRootEmbeddedCanvas("canvas_femb", l_frame, w, 0.5*h);     // create canvas widget
     l_frame->AddFrame(canvas_femb, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
-    // left side: draw button
+    // draw button
     TGTextButton *draw = new TGTextButton(hf_1, "&Draw Summary");
     draw->Connect("Clicked()","MyMainFrame",this,"DoDrawFEMB()");
     hf_1->AddFrame(draw, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     
-    //          right side: frame           //
+    vf_1->AddFrame(hf_1, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    
+    // right //
     vf_2 = new TGVerticalFrame(hfm_1, 10, 10);
     hf_2 = new TGHorizontalFrame(vf_2, 10, 10); //internal to right vertical
     r_frame = new TGCompositeFrame(vf_2, 10, 10, kSunkenFrame);
@@ -114,25 +115,34 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
 
     hfm_1->AddFrame(vf_2, new TGLayoutHints(kLHintsTop | kLHintsExpandX));
     
-    // right side: create canvas
+    // create canvas
     canvas_gain = new TRootEmbeddedCanvas("canvas_gain", r_frame, w, 0.5*h);     // create canvas widget
     r_frame->AddFrame(canvas_gain, new TGLayoutHints(kLHintsExpandX | kLHintsExpandY, 10, 10, 10, 1) );
     
-    // right side: slider control
+    // selection
+    fCombo = new TGComboBox(hf_2, kComboID1);
+    fCombo->Resize(w/2, 20);
+    fCombo->AddEntry("Gain", kComboID1);
+    fCombo->AddEntry("Residuals", kComboID2);
+    //fCombo->Connect("Selected(Int_t)", "MyMainFrame", this, "Echo(Int_t)");
+    
+    // slider control
     hslider = new TGHSlider(hf_2,150,kSlider1 | kScaleDownRight,HSId1);
-    //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoSlider(Int_t)");
-    hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawGain(Int_t)");
     hslider->SetRange(0,127);
     hslider->SetPosition(0);
-    hf_2->AddFrame(hslider, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
+    hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDraw(Int_t)");
+    
+    hf_2->AddFrame(hslider, new TGLayoutHints(kLHintsRight, 5, 5, 3, 4));
+    hf_2->AddFrame(fCombo,  new TGLayoutHints(kLHintsLeft, 5, 5, 3, 4));
 
+    vf_2->AddFrame(hf_2, new TGLayoutHints(kLHintsCenterX, 5, 5, 3, 4));
     //--------------------------------------//
     //          horizontal level 2          //
     //--------------------------------------//
     hfm_2 = new TGHorizontalFrame(fMain, w, h);
     
     // create canvas
-    canvas_wf = new TRootEmbeddedCanvas("canvas_wf", hfm_2, w*2, 0.5*h);     // create canvas widget
+    canvas_wf = new TRootEmbeddedCanvas("canvas_wf", hfm_2, w*2, 0.5*h, kSunkenFrame);     // create canvas widget
     hfm_2->AddFrame(canvas_wf, new TGLayoutHints(kLHintsCenterY | kLHintsExpandX));
     
     //--------------------------------------//
@@ -142,13 +152,13 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     
     // number entry
     Nent_chan = new TGNumberEntry(hfm_3, 1, 6, kENTRY1, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAAnyNumber, TGNumberFormat::kNELLimitMinMax, 0,127);
-    Nent_chan->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit(Long_t)"); //??
+    Nent_chan->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit()"); //??
     
     Nent_sub = new TGNumberEntry(hfm_3, 1, 6, kENTRY2, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAAnyNumber, TGNumberFormat::kNELLimitMinMax, 0,10);
-    Nent_sub->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit(Long_t)");
+    Nent_sub->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit()");
     
     Nent_peak = new TGNumberEntry(hfm_3, 1, 6, kENTRY3, TGNumberFormat::kNESInteger, TGNumberFormat::kNEAAnyNumber, TGNumberFormat::kNELLimitMinMax, 0,10);
-    Nent_peak->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit(Long_t)");
+    Nent_peak->Connect("ValueSet(Long_t)", "MyMainFrame", this, "DoDrawFit()");
     
     // add all widgets to frame
     hfm_3->AddFrame(Nent_chan, new TGLayoutHints(kLHintsBottom | kLHintsLeft, 0, 0, 0, 0));
@@ -163,6 +173,10 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     // exit button
     TGTextButton *exit = new TGTextButton(hfm_4, "&Exit", "gApplication->Terminate(0)");
     hfm_4->AddFrame(exit, new TGLayoutHints(kLHintsTop | kLHintsCenterX, 5, 5, 3, 4));
+    
+    TGTextButton *wf = new TGTextButton(hfm_4, "&Draw Waveform");
+    wf->Connect("Clicked()","MyMainFrame",this,"DoDrawWf()");
+    hfm_4->AddFrame(wf, new TGLayoutHints(kLHintsTop | kLHintsCenterX, 5, 5, 3, 4));
     
     //          fmain stuff         //
 
@@ -187,13 +201,59 @@ MyMainFrame::MyMainFrame(const TGWindow *p, UInt_t w, UInt_t h){
     fMain->MapWindow();
     
 }
-void MyMainFrame::DoDrawGain(Int_t pos){
-    Double_t RT_f, GN_f, GN_m;
-    Int_t charge, s, c, p, gain, shape;
+
+void MyMainFrame::Echo(Int_t iden){
+    Int_t pos = hslider->GetPosition();
+    switch (iden) {
+        case kComboID1:
+            //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawGain(Int_t)");
+            DoDrawGain(pos);
+            std::cout << " kCom1 - id: " << iden << std::endl;
+            break;
+        case kComboID2:
+            //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawRes(Int_t)");
+            DoDrawRes(pos);
+            std::cout << " kCom2 - id: " << iden << std::endl;
+            break;
+        //default:
+        //    break;
+    }
+}
+
+void MyMainFrame::DoDraw(Int_t pos){
+    Int_t food = fCombo->WidgetId();
     
-    TGTextEntry *te = (TGTextEntry *) gTQSender;
-    Int_t id = te->WidgetId();
-    //std::cout << " DoDrawGain::text entry1: " << tbuf1->GetString() << std::endl;
+    switch (fCombo->GetSelected()) {
+        case kComboID1:
+            //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawGain(Int_t)");
+            DoDrawGain(pos);
+            //std::cout << " kCom1 - id: " << fCombo->GetSelected() << std::endl;
+            break;
+            
+        case kComboID2:
+            //hslider->Connect("PositionChanged(Int_t)","MyMainFrame",this,"DoDrawRes(Int_t)");
+            DoDrawRes(pos);
+            //std::cout << " kCom2 - id: " << fCombo->GetSelected() << std::endl;
+            break;
+            
+        default:
+            break;
+    }
+}
+
+void MyMainFrame::DoDrawGain(Int_t pos){
+    Int_t id;
+    TGFrame *frm = (TGFrame *) gTQSender;
+    if (frm->IsA()->InheritsFrom(TGSlider::Class())) {
+        TGSlider *sl = (TGSlider*) frm;
+        id = sl->WidgetId();
+    } else {
+        TGHSlider *sd = (TGHSlider *) frm;
+        id = sd->WidgetId();
+    }
+    
+    Double_t RT_f, GN_f, GN_m, shape_v;
+    Int_t charge, s, c, p, gain, shape, gain_v;
 
     TTree *tr_rawdata;
     std::string file_name = tbuf1->GetString(); // F_P => Reads only one file
@@ -212,6 +272,8 @@ void MyMainFrame::DoDrawGain(Int_t pos){
     tr_rawdata->SetBranchAddress("p", &p);              // initialize subrun branch
     tr_rawdata->SetBranchAddress("gain", &gain);        // initialize subrun branch
     tr_rawdata->SetBranchAddress("shape", &shape);      // initialize subrun branch
+    tr_rawdata->SetBranchAddress("gain_v", &gain_v);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("shape_v", &shape_v);  // initialize subrun branch
     
     Long64_t nEntries(tr_rawdata->GetEntries());
     tr_rawdata->GetEntry(0);
@@ -219,32 +281,92 @@ void MyMainFrame::DoDrawGain(Int_t pos){
         if (c == pos) { gain = gain; }
     }
     
-    hprof = new TProfile("hprof",Form("gain: [%d] shape: [%d] channel: [%d]", gain, shape, pos),10,0,218200);
-    if(gain == 2) hprof->SetMaximum(25);
-    if(gain == 3) hprof->SetMaximum(40);
-    tr_rawdata->Draw("(0.33*6241)*(GN_f/charge):charge>>hprof",Form("c==%d",pos),"*");
-    hprof->SetLineColor(1);
-    hprof->SetXTitle("Channel");
-    hprof->SetYTitle("Channel");
-    
-    hprof_m = new TProfile("hprof_m",Form("gain: [%d] shape: [%d] channel: [%d]", gain, shape, pos),10,0,218200);
+    hprof_f = new TProfile("hprof_f",Form("Gain: %d (mV/fC), Shape: %1.1f (#mu s), Channel: %d", gain_v, shape_v, pos),10,0,218200);
+    if(gain == 2) hprof_f->SetMaximum(25);
+    if(gain == 3) hprof_f->SetMaximum(40);
+    tr_rawdata->Draw("(0.33*6241)*(GN_f/charge):charge>>hprof_f",Form("c==%d",pos),"*");
+    hprof_f->SetLineColor(1);
+    hprof_f->SetXTitle("Injected Charge (e-)");
+    hprof_f->SetYTitle("Gain (mV/fC)");
+    hprof_f->SetStats(0);
+
+    hprof_m = new TProfile("hprof_m","",10,0,218200);
     tr_rawdata->Draw("(0.33*6241)*(GN_m/charge):charge>>hprof_m",Form("c==%d",pos),"same");
     hprof_m->SetLineColor(4);
-
+    
+    hprof_gs = new TProfile("hprof_gs","",10,0,218200);
+    tr_rawdata->Draw("gain_v:charge>>hprof_gs",Form("c==%d && s>1",pos),"same");
+    hprof_gs->SetLineColor(3);
+    
     auto legend = new TLegend(0.1,0.7,0.48,0.9);
-    legend->SetHeader("The Legend Title","C"); // option "C" allows to center the header
-    legend->AddEntry("hprof"  ," Fit results ","l");
-    legend->AddEntry("hprof_m"," Measurement results ","lep");
+    legend->AddEntry("hprof_f"," Response Func. Fit: results ","l");
+    legend->AddEntry("hprof_m"," Peak Measurement: results ","lep");
     legend->Draw();
     
     TCanvas *fCanvas = canvas_gain->GetCanvas();
     fCanvas->cd();
     fCanvas->Update();
+    fCanvas->Clear();
 }
+
+
+void MyMainFrame::DoDrawRes(Int_t pos){
+    
+    Double_t RT_f, GN_f, GN_m, shape_v, fpga_voltage;
+    Int_t charge, s, c, p, gain, shape, gain_v;
+    
+    TTree *tr_rawdata;
+    TFile *inputFile = new TFile(tbuf1->GetString(), "READ");
+    
+    tr_rawdata = (TTree*) inputFile->Get("roast_beef");
+    if( !tr_rawdata )
+    {   std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0); }
+    tr_rawdata->SetBranchAddress("RT_f", &RT_f);        // units [bins]
+    tr_rawdata->SetBranchAddress("GN_f", &GN_f);        // units [ADC]
+    tr_rawdata->SetBranchAddress("GN_m", &GN_m);        // units [ADC]
+    tr_rawdata->SetBranchAddress("charge", &charge);    // units [e-]
+    tr_rawdata->SetBranchAddress("fpga_voltage", &fpga_voltage);    // units [V]
+    tr_rawdata->SetBranchAddress("s", &s);              //
+    tr_rawdata->SetBranchAddress("c", &c);              // initialize subrun branch
+    tr_rawdata->SetBranchAddress("p", &p);              // initialize subrun branch
+    tr_rawdata->SetBranchAddress("gain", &gain);        // initialize subrun branch
+    tr_rawdata->SetBranchAddress("shape", &shape);      // initialize subrun branch
+    tr_rawdata->SetBranchAddress("gain_v", &gain_v);    // initialize subrun branch
+    tr_rawdata->SetBranchAddress("shape_v", &shape_v);  // initialize subrun branch
+    
+    Long64_t nEntries(tr_rawdata->GetEntries());
+    tr_rawdata->GetEntry(0);
+    for(Long64_t entry(0); entry < nEntries; ++entry) {
+        tr_rawdata->GetEntry(entry);
+        if (c == pos) { gain = gain; }
+    }
+    residual_f = new TProfile("residual_f",Form("Gain: %d (mV/fC), Shape: %1.1f (#mu s), Channel: %d", gain_v, shape_v, pos),10,0,218200);
+    tr_rawdata->Draw("(((6241*GN_f/3)/gain_v)-charge):charge>>residual_f",Form("c==%d",pos),"*");
+    residual_f->SetLineColor(1);
+    residual_f->SetXTitle("Injected Charge (e-)");
+    residual_f->SetYTitle("Residual (e-)");
+    residual_f->SetStats(0);
+    
+    residual_m = new TProfile("residual_m","",10,0,218200);
+    tr_rawdata->Draw("(((6241*GN_m/3)/gain_v)-charge):charge>>residual_m",Form("c==%d",pos),"*");
+    residual_m->SetLineColor(4);
+
+    auto legend = new TLegend(0.1,0.7,0.48,0.9);
+    legend->AddEntry("residual_f","residual fit: results","l");
+    legend->AddEntry("residual_m","residual meas.: results","lep");
+    legend->Draw();
+    
+    TCanvas *fCanvas = canvas_gain->GetCanvas();
+    fCanvas->cd();
+    fCanvas->Update();
+    fCanvas->Clear();
+}
+
+
 void MyMainFrame::DoDrawFEMB(){
     Double_t RT_f, GN_f, GN_m;
     Int_t charge, s, c, p;
-    Char_t *pesto_pasta;
     
     TGTextEntry *te = (TGTextEntry *) gTQSender;
     Int_t id = te->WidgetId();
@@ -264,10 +386,9 @@ void MyMainFrame::DoDrawFEMB(){
     tr_rawdata->SetBranchAddress("s", &s);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("c", &c);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("p", &p);    // initialize subrun branch
-    tr_rawdata->SetBranchAddress("timestamp", &pesto_pasta);
     
     h2 = new TH2F("h2",Form("FEMB Summary %s", "20170808T143522"),128,0,128,10,0,218200);
-    tr_rawdata->Draw("charge:c>>h2","(0.33*6241)*GN_f/charge*(p==0 && GN_f<1e6)","colz");
+    tr_rawdata->Draw("charge:c>>h2","(0.33*6241)*GN_m/charge*(p==0 && GN_f<1e6)","colz");
     h2->SetStats(0);
     h2->SetXTitle("Channel");
     h2->SetYTitle("Injected Charge (e-)");
@@ -276,7 +397,9 @@ void MyMainFrame::DoDrawFEMB(){
     fCanvas_x->cd();
     fCanvas_x->Update();
 }
-void MyMainFrame::DoDrawFit(Long_t pos){
+
+
+void MyMainFrame::DoDrawFit(){
     TGNumberEntry *sender = (TGNumberEntry *) gTQSender;
     Int_t id = sender->WidgetId();
     
@@ -287,21 +410,30 @@ void MyMainFrame::DoDrawFit(Long_t pos){
     const int const_numSubrun = 64, const_numChan = 128;
     unsigned short subrunIn, chanIn;    //output tree and variable
     
-    TString food = tbuf2->GetString();
-    TFile *inputFile = new TFile(food, "READ");
-    
     TTree *tr_rawdata;
+    TFile *inputFile = new TFile(tbuf2->GetString(), "READ");
+    
+    // get branches
+    TTree *rawdata; Int_t shape;
+    TFile *inputF = new TFile(tbuf1->GetString(), "READ");
+    rawdata = (TTree*) inputF->Get("roast_beef");
+    if( !rawdata )
+    {   std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0); }
+    rawdata->SetBranchAddress("shape", &shape);      // initialize subrun branch
+    rawdata->GetEntry(0);
+    
+    // get wf branches
     tr_rawdata = (TTree*) inputFile->Get("femb_wfdata");
-    if( !tr_rawdata ){
-        std::cout << "Error opening input file tree, exiting" << std::endl;
-        gSystem->Exit(0);
-    }
+    if( !tr_rawdata )
+    {   std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0); }
     tr_rawdata->SetBranchAddress("subrun", &subrunIn);      // initialize subrun branch
     tr_rawdata->SetBranchAddress("chan", &chanIn);          // initialize channel branch
     tr_rawdata->SetBranchAddress("wf", &wfIn);              // initialize waveform branch
-    
     Long64_t nEntries(tr_rawdata->GetEntries());            // 11 subrun * 128 channels = 1408 entries (wf)
     tr_rawdata->GetEntry(0);
+    
     //
     Analyze foo;
     Int_t f_p = 3, x_s = 0, x = 0, y = 0, bl = 0, fit_range = 30, scale = 2;
@@ -321,7 +453,7 @@ void MyMainFrame::DoDrawFit(Long_t pos){
         if( chanIn == c && subrunIn == 1){
             for( unsigned int s = 0 ; s < wfIn->size() ; s++) wf.push_back( wfIn->at(s) );
             foo.set_run_info(subrunIn,chanIn,f_p);          // initialize vector of structures size
-            foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+            foo.set_peaks(subrunIn,chanIn,f_p,shape,wf);
             foo.set_baseline(subrunIn,chanIn,f_p,wf);
             bl = foo.get_baseline(1,chanIn,f_p);
         }
@@ -330,7 +462,7 @@ void MyMainFrame::DoDrawFit(Long_t pos){
             for( unsigned int s = 0 ; s < wfIn->size() ; s++) wf.push_back( wfIn->at(s) );
             foo.set_run_info(subrunIn,chanIn,f_p);          // initialize vector of structures size
             foo.set_run_channel(subrunIn,chanIn);
-            foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+            foo.set_peaks(subrunIn,chanIn,f_p,shape,wf);
             
             x = foo.get_pos_peak_x(subrunIn,chanIn,f_p,p);
             y = foo.get_pos_peak_y(subrunIn,chanIn,f_p,p)-bl;
@@ -382,23 +514,35 @@ void MyMainFrame::DoDrawFit(Long_t pos){
     
     
 }
-void MyMainFrame::DoDrawWf(Long_t pos){
+void MyMainFrame::DoDrawWf(){
+    wf.clear();
+
     TGNumberEntry *sender = (TGNumberEntry *) gTQSender;
     Int_t id = sender->WidgetId();
     
-    wf.clear();
+    TGTextEntry *te = (TGTextEntry *) gTQSender;
+    Int_t id_t = te->WidgetId();
+    
     const int const_numSubrun = 64, const_numChan = 128;
     unsigned short subrunIn, chanIn;    //output tree and variable
     
-    TString food = Form("Data/20170808T143522/g2_s0_extpulse/gainMeasurement_femb_1-parseBinaryFile.root");
-    TFile *inputFile = new TFile(food, "READ");
-    
+    // get branches
+    TTree *rawdata; Int_t shape;
+    TFile *inputF = new TFile(tbuf1->GetString(), "READ");
+    rawdata = (TTree*) inputF->Get("roast_beef");
+    if( !rawdata )
+    {   std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0); }
+    rawdata->SetBranchAddress("shape", &shape);      // initialize subrun branch
+    rawdata->GetEntry(0);
+
+    // get wf branches
     TTree *tr_rawdata;
+    TFile *inputFile = new TFile(tbuf2->GetString(), "READ");
     tr_rawdata = (TTree*) inputFile->Get("femb_wfdata");
-    if( !tr_rawdata ){
-        std::cout << "Error opening input file tree, exiting" << std::endl;
-        gSystem->Exit(0);
-    }
+    if( !tr_rawdata )
+    {   std::cout << "Error opening input file tree, exiting" << std::endl;
+        gSystem->Exit(0); }
     tr_rawdata->SetBranchAddress("subrun", &subrunIn);    // initialize subrun branch
     tr_rawdata->SetBranchAddress("chan", &chanIn);        // initialize channel branch
     tr_rawdata->SetBranchAddress("wf", &wfIn);            // initialize waveform branch
@@ -415,36 +559,44 @@ void MyMainFrame::DoDrawWf(Long_t pos){
         if( chanIn == Nent_chan->GetIntNumber() && subrunIn == Nent_sub->GetIntNumber()){
             
             //--------------------------------------------------------------------
-            for( unsigned int s = 0 ; s < wfIn->size()-1 ; s++ ) wf.push_back(wfIn->at(s));
-            TH1F *h1 = new TH1F("h1",Form("Waveform Plot Channel: %d Subrun: %d", chanIn, subrunIn),wf.size(),1,wf.size());
-            for (int idx = 0; idx<wf.size(); idx++) h1->SetBinContent(idx, wf.at(idx));
+            for( unsigned int s = 0 ; s < wfIn->size() ; s++ ) wf.push_back(wfIn->at(s));
+            TH1F *h1 = new TH1F("h1",Form("Waveform Plot Channel: %d Subrun: %d", chanIn, subrunIn),wfIn->size(),1,wfIn->size());
             
+            // fill hist
+            for (unsigned long idx = 0; idx<wf.size(); idx++) h1->SetBinContent(idx, wf.at(idx));
             TH1F *d = new TH1F("d","",wf.size(),0,wf.size());
             TH1F *e = new TH1F("e","",wf.size(),0,wf.size());
             TH1F *f = new TH1F("f","",wf.size(),0,wf.size());
-            
             Double_t *source = new Double_t[wf.size()];
             TSpectrum *soup = new TSpectrum(80);
             
-            for (Long_t idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
-            soup->Background(source,wf.size(),32,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
-            for (Long_t idx = 0; idx < wf.size()-1; idx++) d->SetBinContent(idx,source[idx]);
-            for (Long_t idx = 0; idx < wf.size()-1; idx++) e->Fill(d->GetBinContent(idx));
+            // fill hist
+            for (unsigned short idx = 0; idx < wf.size(); idx++) source[idx]=wf.at(idx);
+            soup->Background(source,wf.size(),29,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
+            for (unsigned short idx = 0; idx < wf.size(); idx++) d->SetBinContent(idx,source[idx]);
+            for (unsigned short idx = 0; idx < wf.size(); idx++) e->Fill(d->GetBinContent(idx));
             
-            Int_t nfound = soup->Search(h1,8,"",0.001);
+            // search for peaks
+            Int_t sigma = 0;
+            if (shape == 0) sigma = 4;
+            if (shape == 1) sigma = 4;
+            if (shape == 2) sigma = 8;
+            if (shape == 3) sigma = 8;
+            Int_t nfound = soup->Search(h1,sigma,"",0.01);
             Double_t *xpeaks = soup->GetPositionX();
             Double_t *ypeaks = soup->GetPositionY();
             
             for (int idx = 0; idx < nfound; idx++) {
                 if (ypeaks[idx] > (e->GetMean() + e->GetRMS() + 130) ) {
                     std::cout << " i: " << idx << " x: " << xpeaks[idx] << " y: " << ypeaks[idx] << std::endl;
-                    f->SetBinContent(xpeaks[idx],ypeaks[idx]);
+                    //f->SetBinContent(xpeaks[idx]+1,ypeaks[idx]);
                 }
             }
             //--------------------------------------------------------------------
             
             h1->Draw();
             h1->SetMaximum(4096);
+            //h1->SetMaximum(4096);
             
             d->SetLineColor(kRed);
             d->Draw("same");
@@ -511,27 +663,3 @@ int main(int argc, char **argv){
     theApp.Run();
     return 0;
 }
-
-// file browser
-//pBrowser = new TGFileBrowser(p);
-//p->SetEditable(kFALSE);
-//pBrowser->AddFSDirectory("/", "/");
-//pBrowser->GotoDir(gSystem->pwd());
-
-/*tr_rawdata->Draw("wf:Iteration$ >> h1(19498,0,19498)",Form("(chan==%ld && subrun==%ld)",Nent_chan->GetIntNumber(),Nent_sub->GetIntNumber()),"L");
- 
- TH1F *g1 = (TH1F*)gDirectory->Get("h1");
- Double_t *source = new Double_t[19498];
- TSpectrum *soup = new TSpectrum(100);
- for (Long_t idx = 0; idx < 19498; idx++) source[idx] = g1->GetBinContent(idx);
- soup->Background(source,wf.size(),12,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE, TSpectrum::kBackSmoothing9,kTRUE);
- for (Long_t idx = 0; idx < wf.size(); idx++) h2->SetBinContent(idx,source[idx]);
- Int_t nfound = soup->Search(h2,4,"",0.10);
- printf("Found %d candidate peaks, %f baseline\n",nfound, g1->GetMean());
- h2->Draw("same");
- 
- g1->Draw("same");
- g1->SetMaximum(4096);
- 
- h1->SetLineColor(kRed);
- h1->Draw("same");*/

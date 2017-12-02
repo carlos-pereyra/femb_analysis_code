@@ -39,11 +39,11 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     Analyze foo;
     //
     // read parameters
-    //
     vector<string> words  = getTimeStamp(param_file);
     std::string time_stamp = words.at(0);
     Char_t *ts = (char *) time_stamp.c_str() ;
     
+    std::cout << "ts: " << ts << std::endl;
     vector<double> par = getParameters(param_file);
     int s_l = par.at(1);
     int s_h = par.at(2);
@@ -74,16 +74,17 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     pulse_shape.push_back(2); // g2 s1 ( s = 2, F = 5  )
     pulse_shape.push_back(4); // g2 s2 ( s = 4, F = 6  )
     pulse_shape.push_back(6); // g2 s3 ( s = 6, F = 7  )
-    Int_t gain, shape;
-    if (f_p==0){ gain = 2; shape = 0; }
-    if (f_p==1){ gain = 2; shape = 1; }
-    if (f_p==2){ gain = 2; shape = 2; }
-    if (f_p==3){ gain = 2; shape = 3; }
-    if (f_p==4){ gain = 3; shape = 0; }
-    if (f_p==5){ gain = 3; shape = 1; }
-    if (f_p==6){ gain = 3; shape = 2; }
-    if (f_p==7){ gain = 3; shape = 3; }
-    Double_t RT_f_fited = 0, RT_f = 0, RT_f_temp = 0, RT_k = pulse_shape.at(f_p);
+    Int_t gain, gain_v, shape;
+    Double_t shape_v;
+    if (f_p==0){ gain = 2; gain_v = 14; shape = 0; shape_v = 0.5;}
+    if (f_p==1){ gain = 2; gain_v = 14; shape = 1; shape_v = 1;}
+    if (f_p==2){ gain = 2; gain_v = 14; shape = 2; shape_v = 2;}
+    if (f_p==3){ gain = 2; gain_v = 14; shape = 3; shape_v = 4;}
+    if (f_p==4){ gain = 3; gain_v = 25; shape = 0; shape_v = 0.5;}
+    if (f_p==5){ gain = 3; gain_v = 25; shape = 1; shape_v = 1;}
+    if (f_p==6){ gain = 3; gain_v = 25; shape = 2; shape_v = 2;}
+    if (f_p==7){ gain = 3; gain_v = 25; shape = 3; shape_v = 4;}
+    Double_t RT_f_fited = 0, RT_f = 0, RT_f_temp = 0, RT_k = pulse_shape.at(f_p), fpga_voltage = 0;
     Double_t GN_f_fited = 0, GN_f = 0, GN_f_temp = 0, GN_m = 0, chi_v = 1, chi_t = 0, x_s = 0;
     Int_t s = 0, c = 0, p = 0, x = 0, y = 0, bl = 0, bl_s = 0, charge = 0, bl_rms = 0, fit_range = 30;
     //
@@ -111,6 +112,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("GN_f",&GN_f,"GN_f/D");
     roast_beef.Branch("GN_m",&GN_m,"GN_m/D");
     roast_beef.Branch("charge",&charge,"charge/I");
+    roast_beef.Branch("fpga_voltage",&fpga_voltage,"fpga_voltage/D");
     roast_beef.Branch("s",&s,"s/I");
     roast_beef.Branch("c",&c,"c/I");
     roast_beef.Branch("p",&p,"p/I");
@@ -118,30 +120,26 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
     roast_beef.Branch("bl_s",&bl_s,"bl_s/I");
     roast_beef.Branch("gain",&gain,"gain/I");
     roast_beef.Branch("shape",&shape,"shape/I");
-    roast_beef.Branch("timestamp",(void*) ts,"ts/C");
+    roast_beef.Branch("gain_v",&gain_v,"gain_v/I");
+    roast_beef.Branch("shape_v",&shape_v,"shape_v/D");
+    roast_beef.Branch("timestamp",&words.at(0));
     //roast_beef.Branch("temp",&temp,"temp/I");       //x
     for(Long64_t entry(0); entry < nEntries; ++entry) {
         tr_rawdata->GetEntry(entry);
         if( subrunIn < 0 || subrunIn >= const_numSubrun ) continue;
         if( chanIn < 0 || chanIn >= const_numChan ) continue;
         wf.clear();
-        for( unsigned int idx = 0 ; idx < wfIn->size() ; idx++ ){//store waveform vector in array for quick access
-            wf.push_back( wfIn->at(idx) );
-        }
-        //if(subrunIn == 1){
-        //foo.set_run_info(subrunIn,chanIn,f_p);          // initialize vector of structures size
-        //foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
-
-        //}
+        for(unsigned int idx = 0 ; idx < wfIn->size() ; idx++) wf.push_back(wfIn->at(idx));
         
         foo.set_run_info(subrunIn,chanIn,f_p);    // initialize vector of structures size
         foo.set_run_channel(subrunIn,chanIn);
-        foo.set_peaks(subrunIn,chanIn,f_p,wf, 400);
+        foo.set_peaks(subrunIn,chanIn,f_p,shape,wf);
         foo.set_baseline(subrunIn,chanIn,f_p,wf);
-        bl = foo.get_baseline(subrunIn,chanIn,f_p);
 
         TH1F *hist_peak = new TH1F("","",50,0,49);
         if (subrunIn > 1) {
+            bl = foo.get_baseline(1,chanIn,f_p);
+
             for (p = 0; p < foo.get_pos_npeaks(subrunIn,chanIn,f_p)-2; p++) {
                 
                 x = foo.get_pos_peak_x(subrunIn,chanIn,f_p,p);
@@ -154,7 +152,7 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                 //std::cout << " --- --- --- --- --- " << p;
                 int i_a = 1;
                 while (i_a < 20) {
-                    x_s = i_a*0.5;
+                    x_s = i_a;
                     if (x_s>x) break;
                     for(int i_b = 0; i_b < 49; i_b++) {
                         if (x+i_b>wf.size()) break;
@@ -165,14 +163,13 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                     RT_f_fited = std::abs(resp_fit->GetParameter(1));               // set fit data
                     GN_f_fited = std::abs(resp_fit->GetParameter(0)/10);
                     chi_v = resp_fit->GetChisquare();
-                    //std::cout << " x_s: " << x_s << "\t ch_v: " << chi_v << "\t ch_t: " << chi_t;
-                    //std::cout << " RT_f: " << RT_f_temp << " GN_f_temp: " << GN_f_temp << " y-bl: " << y-bl << std::endl;
 
                     if( (std::abs(chi_t)/std::abs(chi_v))>1 || i_a==1 ) {
                         RT_f_temp = RT_f_fited;
                         GN_f_temp = GN_f_fited;
                         chi_t = chi_v;
                     }
+                    
                     i_a++;
                 }
                 //--------------------------------------------------------------------
@@ -184,11 +181,14 @@ void Ntuple_dat(const char* param_file ,const char* input_file){
                 GN_f = GN_f_temp;
                 GN_m = y-bl;
                 charge = 0; if(subrunIn>1) charge = ((signalSizes_fpga[subrunIn-1]-signalSizes_fpga[0])*184*10000/1.6); // assumes s>=2
+                fpga_voltage = 0; if(subrunIn>1) fpga_voltage = (signalSizes_fpga[subrunIn-1]-signalSizes_fpga[0]);
                 s = subrunIn;
                 c = chanIn;
                 p = p;
                 gain = gain;
                 shape = shape;
+                gain_v = gain_v;
+                shape_v = shape_v;
                 ts = ts;
                 bl = bl;
                 bl_s = bl_s;
